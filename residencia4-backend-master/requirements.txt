@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+requests
+sqlalchemy
+psycopg2-binary
+opencv-python-headless
+pydub
+numpy
+httpx
+pandas
+python-multipart
+python-dotenv
+imageio-ffmpeg
+python-socketio
+fastapi-cors
+reportlab

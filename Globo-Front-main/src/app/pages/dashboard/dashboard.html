@@ -1,0 +1,180 @@
+<div class="p-8 text-white animate-fade-in h-full overflow-y-auto custom-scrollbar bg-[#121212]">
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold mb-1 tracking-tight">DASHBOARD</h1>
+      <p class="text-gray-400 text-sm font-medium">Estatísticas de qualidade do sinal.</p>
+    </div>
+    
+    <div class="flex flex-col md:flex-row items-end md:items-center gap-3">
+      <div *ngIf="activeFilter === 'custom'" class="flex items-center gap-2 animate-fade-in bg-[#1E1E1E] p-1.5 rounded-lg border border-white/10 shadow-lg">
+        <div class="relative group">
+           <input type="date" #startPicker (click)="startPicker.showPicker()" [(ngModel)]="customStart" 
+                  class="bg-transparent border-none text-white text-xs font-mono focus:ring-0 outline-none w-[105px] cursor-pointer hover:text-[#F47F20] transition-colors" placeholder="Início">
+        </div>
+        <span class="text-gray-600 text-xs font-bold">-</span>
+        <div class="relative group">
+           <input type="date" #endPicker (click)="endPicker.showPicker()" [(ngModel)]="customEnd" 
+                  class="bg-transparent border-none text-white text-xs font-mono focus:ring-0 outline-none w-[105px] cursor-pointer hover:text-[#F47F20] transition-colors" placeholder="Fim">
+        </div>
+        <button (click)="applyCustomFilter()" class="bg-[#F47F20] hover:bg-[#D86810] text-white px-3 py-1 rounded text-xs font-bold transition shadow-md">
+          OK
+        </button>
+      </div>
+
+      <div class="flex bg-[#1E1E1E] rounded-lg p-1 border border-white/10 shadow-lg">
+        <button (click)="setFilter('today')" 
+                class="px-4 py-1.5 text-xs font-bold rounded transition-all duration-200 uppercase tracking-wide"
+                [ngClass]="activeFilter === 'today' ? 'bg-[#333] text-white shadow shadow-black/50 border border-white/5' : 'text-gray-500 hover:text-white'">
+          Hoje
+        </button>
+        <button (click)="setFilter('7days')" 
+                class="px-4 py-1.5 text-xs font-bold rounded transition-all duration-200 uppercase tracking-wide"
+                [ngClass]="activeFilter === '7days' ? 'bg-[#333] text-white shadow shadow-black/50 border border-white/5' : 'text-gray-500 hover:text-white'">
+          7 Dias
+        </button>
+        <button (click)="setFilter('30days')" 
+                class="px-4 py-1.5 text-xs font-bold rounded transition-all duration-200 uppercase tracking-wide"
+                [ngClass]="activeFilter === '30days' ? 'bg-[#333] text-white shadow shadow-black/50 border border-white/5' : 'text-gray-500 hover:text-white'">
+          30 Dias
+        </button>
+        <button (click)="setFilter('custom')" 
+                class="px-4 py-1.5 text-xs font-bold rounded transition-all duration-200 uppercase tracking-wide"
+                [ngClass]="activeFilter === 'custom' ? 'bg-[#333] text-[#F47F20] shadow shadow-black/50 border border-white/5' : 'text-gray-500 hover:text-white'">
+          Período
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-8">
+
+    <div class="flex flex-col gap-6">
+      
+      <div class="grid grid-cols-3 gap-4">
+        
+        <div class="bg-[#1E1E1E] p-5 rounded-xl border border-white/5 relative overflow-hidden group hover:border-green-500/30 transition-all shadow-lg">
+          <div class="absolute right-[-10px] top-[-10px] text-white/20 text-6xl group-hover:text-green-500/20 transition-colors transform rotate-12">
+            <i class="fas fa-check-circle"></i>
+          </div>
+          <h3 class="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-2 relative z-10">Validado</h3>
+          <p class="text-3xl font-bold text-green-500 font-mono relative z-10 tracking-tighter">{{ summary?.total_validated_occurrences || 0 }}</p>
+        </div>
+
+        <div class="bg-[#1E1E1E] p-5 rounded-xl border border-white/5 relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg">
+          <div class="absolute right-[-10px] top-[-10px] text-white/20 text-6xl group-hover:text-red-500/20 transition-colors transform rotate-12">
+            <i class="fas fa-times-circle"></i>
+          </div>
+          <h3 class="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-2 relative z-10">Rejeitado</h3>
+          <p class="text-3xl font-bold text-red-500 font-mono relative z-10 tracking-tighter">{{ summary?.status_distribution?.rejected || 0 }}</p>
+        </div>
+
+        <div class="bg-[#1E1E1E] p-5 rounded-xl border border-white/5 relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg">
+          <div class="absolute right-[-10px] top-[-10px] text-white/20 text-6xl group-hover:text-blue-500/20 transition-colors transform rotate-12">
+            <i class="fas fa-layer-group"></i>
+          </div>
+          <h3 class="text-gray-400 text-[10px] uppercase font-bold tracking-widest mb-2 relative z-10">Total</h3>
+          <p class="text-3xl font-bold text-blue-500 font-mono relative z-10 tracking-tighter">{{ totalOccurrences }}</p>
+        </div>
+
+      </div>
+
+      <div class="bg-[#1E1E1E] p-6 rounded-xl border border-white/5 shadow-xl flex-1 flex flex-col min-h-[600px]">
+        
+        <div class="mb-4">
+           <h2 class="text-gray-400 text-xs uppercase font-bold tracking-widest border-b border-white/5 pb-2">Distribuição por Tipo</h2>
+        </div>
+
+        <div class="flex-1 flex flex-col mb-8 border-b border-white/5 pb-6">
+          <div class="flex justify-between items-center mb-4">
+             <h3 class="font-bold text-sm text-gray-200 flex items-center gap-2">
+               <span class="w-1.5 h-4 bg-purple-500 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.5)]"></span>
+               Falhas de Áudio
+             </h3>
+          </div>
+          <div class="relative w-full flex-1 min-h-[220px]">
+            <ng-container *ngIf="audioChartData.labels?.length; else noDataAudio">
+                <canvas baseChart [data]="audioChartData" [options]="barChartOptions" [type]="'bar'"></canvas>
+            </ng-container>
+            <ng-template #noDataAudio>
+                <div class="flex h-full items-center justify-center text-gray-600 text-xs uppercase tracking-widest border border-dashed border-white/10 rounded-lg">Sem falhas de áudio</div>
+            </ng-template>
+          </div>
+        </div>
+
+        <div class="flex-1 flex flex-col min-h-[220px]">
+          <div class="flex justify-between items-center mb-4">
+             <h3 class="font-bold text-sm text-gray-200 flex items-center gap-2">
+               <span class="w-1.5 h-4 bg-[#F47F20] rounded-full shadow-[0_0_8px_rgba(244,127,32,0.5)]"></span>
+               Falhas de Vídeo
+             </h3>
+          </div>
+          <div class="relative w-full flex-1">
+            <ng-container *ngIf="videoChartData.labels?.length; else noDataVideo">
+               <canvas baseChart [data]="videoChartData" [options]="barChartOptions" [type]="'bar'"></canvas>
+            </ng-container>
+            <ng-template #noDataVideo>
+                <div class="flex h-full items-center justify-center text-gray-600 text-xs uppercase tracking-widest border border-dashed border-white/10 rounded-lg">Sem falhas de vídeo</div>
+            </ng-template>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-6">
+      
+      <div class="bg-[#1E1E1E] p-6 rounded-xl border border-white/5 shadow-xl flex flex-col justify-center min-h-[200px]">
+        
+        <div class="mb-4">
+           <h2 class="text-gray-400 text-xs uppercase font-bold tracking-widest border-b border-white/5 pb-2">Status das Ocorrências</h2>
+        </div>
+        
+        <div class="flex justify-end items-center mb-4">
+           <div class="flex gap-4 text-[10px] uppercase font-bold tracking-wider text-gray-400">
+             <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#34d399]"></span> Validado</div>
+             <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#fbbf24]"></span> Aberto</div>
+             <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#f87171]"></span> Rejeitado</div>
+           </div>
+        </div>
+        
+        <div class="relative w-full h-[60px] flex justify-center items-center">
+          <ng-container *ngIf="totalOccurrences > 0; else noData">
+              <canvas baseChart [data]="statusChartData" [options]="statusChartOptions" [type]="'bar'"></canvas>
+          </ng-container>
+        </div>
+      </div>
+
+      <div class="bg-[#1E1E1E] p-6 rounded-xl border border-white/5 shadow-xl flex flex-col flex-1 min-h-[400px] relative overflow-hidden">
+        
+        <div class="mb-4">
+           <h2 class="text-gray-400 text-xs uppercase font-bold tracking-widest border-b border-white/5 pb-2">Distribuição por Nível</h2>
+        </div>
+
+        <div *ngIf="criticalOccurrences > 0" class="mb-4 bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center gap-3 animate-pulse">
+            <i class="fas fa-exclamation-triangle text-red-500 text-lg"></i>
+            <div>
+                <p class="text-red-400 text-xs font-bold uppercase tracking-wider">Atenção Crítica</p>
+                <p class="text-red-300/80 text-[10px]">{{ criticalOccurrences }} falhas excederam 60 segundos.</p>
+            </div>
+        </div>
+       
+        <div class="relative w-full flex-1 flex justify-center items-center">
+          <ng-container *ngIf="totalOccurrences > 0; else noData">
+              <canvas baseChart [data]="severityChartData" [options]="severityChartOptions" [type]="'bar'"></canvas>
+          </ng-container>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <ng-template #noData>
+    <div class="flex flex-col items-center justify-center h-full opacity-30 w-full">
+        <i class="fas fa-chart-bar text-4xl mb-2"></i>
+        <span class="text-xs uppercase tracking-widest">Sem dados disponíveis</span>
+    </div>
+  </ng-template>
+
+</div>

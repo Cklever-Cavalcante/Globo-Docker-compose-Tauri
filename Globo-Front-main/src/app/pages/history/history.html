@@ -1,0 +1,218 @@
+<div class="p-8 text-white h-full flex flex-col bg-[#0F0F0F] overflow-hidden">
+  
+  <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-bold mb-1 tracking-tight">HISTÓRICO</h1>
+      <p class="text-gray-400 text-sm font-medium">Histórico completo das falhas detectadas.</p>
+    </div>
+    
+    <div class="flex gap-3">
+      <button (click)="download('csv')" class="btn-secondary hover:border-green-500/50 hover:text-green-400">
+        <i class="fas fa-table mr-2"></i> CSV
+      </button>
+      <button (click)="download('pdf')" class="btn-secondary hover:border-red-500/50 hover:text-red-400">
+        <i class="fas fa-file-pdf mr-2"></i> PDF
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-[#181818] px-5 pb-5 pt-16 rounded-xl border border-white/5 mb-6 shadow-lg shrink-0 z-20 relative transition-all"> 
+    
+    <div class="absolute top-5 right-5 z-50">
+        <div class="relative">
+            <button (click)="toggleMenu($event)" 
+                    class="h-[32px] w-[32px] rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-gray-400 hover:text-white transition-all flex items-center justify-center shadow-md"
+                    [ngClass]="{'bg-white/20 text-white border-white/30': isMenuOpen}"
+                    title="Mais opções">
+              <i class="fas fa-ellipsis-v text-xs"></i>
+            </button>
+
+            <div *ngIf="isMenuOpen" 
+                 class="absolute right-0 top-[110%] w-52 bg-[#1E1E1E] border border-white/10 rounded-lg shadow-2xl py-1 animate-fade-in overflow-hidden origin-top-right z-[60]">
+                
+                <div class="px-4 py-2 border-b border-white/5 bg-[#252525]">
+                    <span class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ações em Massa</span>
+                </div>
+
+                <button (click)="deleteByFilter()" 
+                        class="w-full text-left px-4 py-3 text-xs font-bold text-red-400 hover:text-white hover:bg-red-500/80 transition-all flex items-center gap-3 group">
+                    <div class="w-6 h-6 rounded bg-red-500/10 flex items-center justify-center group-hover:bg-transparent transition-colors">
+                      <i class="fas fa-trash-alt group-hover:animate-bounce"></i>
+                    </div>
+                    <div>
+                      <span class="block">Excluir Filtrados</span>
+                      <span class="text-[9px] text-red-400/60 font-normal group-hover:text-white/80 block mt-0.5">Requer confirmação</span>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 items-end">
+      
+      <div class="lg:col-span-2">
+        <label class="label-tiny">Período Inicial</label>
+        <div class="relative group">
+          <input type="date" #pickerStart (click)="pickerStart.showPicker()" [(ngModel)]="filters.start_date" 
+                 class="input-dark cursor-pointer font-mono">
+        </div>
+      </div>
+
+      <div class="lg:col-span-2">
+        <label class="label-tiny">Período Final</label>
+        <div class="relative group">
+          <input type="date" #pickerEnd (click)="pickerEnd.showPicker()" [(ngModel)]="filters.end_date" 
+                 class="input-dark cursor-pointer font-mono">
+        </div>
+      </div>
+
+      <div class="lg:col-span-2">
+        <label class="label-tiny">Status</label>
+        <div class="relative">
+          <select [(ngModel)]="filters.status" class="input-select py-2 pl-4 pr-10 bg-[#0a0a0a]">
+            <option value="">Todos</option>
+            <option value="Aprovado">Aprovado</option>
+            <option value="Rejeitado">Rejeitado</option>
+            <option value="Não Validado">Não Validado</option>
+          </select>
+          <i class="fas fa-chevron-down absolute right-4 top-3 text-gray-400 text-xs pointer-events-none"></i>
+        </div>
+      </div>
+
+      <div class="lg:col-span-2">
+        <label class="label-tiny">Severidade</label>
+        <div class="relative">
+          <select [(ngModel)]="filters.level" class="input-select py-2 pl-4 pr-10 bg-[#0a0a0a] font-mono text-[11px]">
+            <option value="">Todas</option>
+            <option value="X">Nível X (≥ 60s)</option>
+            <option value="A">Nível A (10-59s)</option>
+            <option value="B">Nível B (5-9s)</option>
+            <option value="C">Nível C (≤ 4s)</option>
+          </select>
+          <i class="fas fa-exclamation-triangle absolute right-4 top-3 text-gray-400 text-xs pointer-events-none"></i>
+        </div>
+      </div>
+
+      <div class="lg:col-span-3">
+        <label class="label-tiny">Tipo de Falha</label>
+        <div class="relative">
+          <input type="text" [(ngModel)]="filters.fault_type" placeholder="Ex: Audio Ausente..." 
+                 class="input-dark placeholder-gray-600">
+          <i class="fas fa-search absolute right-3 top-2.5 text-gray-500 text-xs"></i>
+        </div>
+      </div>
+
+      <div class="lg:col-span-3 grid grid-cols-2 gap-2">
+        <div>
+          <label class="label-tiny">Duração Min (s)</label>
+          <input type="number" [(ngModel)]="filters.min_duration" placeholder="0" 
+                 class="input-dark text-center font-mono">
+        </div>
+        <div>
+          <label class="label-tiny">Duração Max (s)</label>
+          <input type="number" [(ngModel)]="filters.max_duration" placeholder="∞" 
+                 class="input-dark text-center font-mono">
+        </div>
+      </div>
+
+      <div class="lg:col-span-2">
+        <button (click)="loadData()" class="w-full h-[38px] rounded-lg bg-[#F47F20] hover:bg-[#D86810] text-white font-bold text-sm transition-all duration-300 shadow-[0_0_15px_rgba(244,127,32,0.2)] hover:shadow-[0_0_20px_rgba(244,127,32,0.4)] border border-[#F47F20]/50 flex items-center justify-center gap-2">
+          <i class="fas fa-filter"></i> APLICAR
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bg-[#181818] rounded-xl border border-white/5 flex-1 flex flex-col shadow-2xl min-h-0 z-10">
+    <div class="overflow-auto flex-1 custom-scrollbar">
+      <table class="w-full text-left border-collapse">
+        <thead class="sticky top-0 bg-[#151515] z-10 shadow-md ring-1 ring-white/5">
+          <tr class="text-gray-400 text-[10px] uppercase tracking-widest font-bold">
+            <th class="p-4 pl-6 border-b border-white/5">Data</th>
+            <th class="p-4 border-b border-white/5">Hora</th>
+            <th class="p-4 border-b border-white/5">Programa</th>
+            <th class="p-4 border-b border-white/5">Falha</th>
+            <th class="p-4 border-b border-white/5">Severidade</th>
+            <th class="p-4 border-b border-white/5">Status</th>
+            <th class="p-4 border-b border-white/5 text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          <tr *ngFor="let item of historyData" class="hover:bg-white/[0.04] transition-colors group">
+            
+            <td class="p-4 pl-6 text-sm font-mono text-gray-300">{{ item.data_hora | date:'dd/MM/yy' }}</td>
+            <td class="p-4 text-sm font-mono font-bold text-white">{{ item.data_hora | date:'HH:mm:ss' }}</td>
+            
+            <td class="p-4 text-sm text-gray-200 font-medium">
+              {{ item.programa || 'Monitoramento Geral' }}
+            </td>
+            
+            <td class="p-4">
+              <span class="text-sm text-gray-300">{{ item.tipo_falha }}</span>
+            </td>
+            
+            <td class="p-4">
+              <span class="text-[10px] font-bold px-2 py-1 rounded border inline-block min-w-[80px] text-center" [ngClass]="{
+                'border-red-500/30 text-red-300 bg-red-500/10': item.nivel === 'X',
+                'border-orange-500/30 text-orange-300 bg-orange-500/10': item.nivel === 'A',
+                'border-yellow-500/30 text-yellow-200 bg-yellow-500/10': item.nivel === 'B',
+                'border-blue-500/30 text-blue-300 bg-blue-500/10': item.nivel === 'C'
+              }">Nível {{ item.nivel }}</span>
+            </td>
+            
+            <td class="p-4">
+              <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border"
+                [ngClass]="{
+                  'bg-green-500/10 text-green-300 border-green-500/20': item.status === 'Aprovado',
+                  'bg-red-500/10 text-red-300 border-red-500/20': item.status === 'Rejeitado',
+                  'bg-yellow-500/10 text-yellow-200 border-yellow-500/20': item.status === 'Não Validado'
+                }">
+                <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                {{ item.status }}
+              </span>
+            </td>
+            
+            <td class="p-4">
+              <div class="flex justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                <button (click)="openDetails(item.id)" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition" title="Ver Detalhes">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button (click)="approve(item.id)" class="w-8 h-8 rounded-full hover:bg-green-500/20 flex items-center justify-center text-gray-500 hover:text-green-400 transition" title="Aprovar">
+                  <i class="fas fa-check"></i>
+                </button>
+                <button (click)="reject(item.id)" class="w-8 h-8 rounded-full hover:bg-red-500/20 flex items-center justify-center text-gray-500 hover:text-red-400 transition" title="Rejeitar">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          
+          <tr *ngIf="historyData.length === 0">
+             <td colspan="7" class="p-12 text-center">
+                <div class="flex flex-col items-center justify-center opacity-40">
+                   <i class="fas fa-search text-4xl mb-4 text-gray-500"></i>
+                   <p class="text-sm font-medium text-gray-400">Nenhum registo encontrado.</p>
+                </div>
+             </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="p-4 border-t border-white/5 bg-[#151515] flex justify-between items-center text-xs text-gray-400">
+      <span>Total: <strong class="text-white">{{ total }}</strong> registos</span>
+      <div class="flex gap-2">
+        <button (click)="changePage(-1)" [disabled]="page === 1" class="px-3 py-1.5 rounded border border-white/10 hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition hover:text-white">Anterior</button>
+        <span class="px-3 py-1.5 bg-white/5 rounded border border-white/5 font-mono text-white">{{ page }}</span>
+        <button (click)="changePage(1)" class="px-3 py-1.5 rounded border border-white/10 hover:bg-white/5 transition hover:text-white">Próximo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-occurrence-details 
+  *ngIf="selectedOccurrenceId" 
+  [occurrenceId]="selectedOccurrenceId" 
+  (statusChanged)="loadData()"
+  (close)="closeDetails()">
+</app-occurrence-details>
