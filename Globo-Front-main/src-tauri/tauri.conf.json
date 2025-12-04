@@ -4,10 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.globo.monitor",
   "build": {
-    "frontendDist": "../dist/globo-monitor-front",
+    "frontendDist": "../dist/globo-monitor-front/browser",
     "devUrl": "http://localhost:4200",
-    "beforeDevCommand": "npm start",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "cd .. && npm start",
+    "beforeBuildCommand": "cd .. && npm run build"
   },
   "app": {
     "windows": [
