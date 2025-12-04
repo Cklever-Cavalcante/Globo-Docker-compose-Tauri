@@ -51,6 +51,13 @@ jobs:
         working-directory: Globo-Front-main
         run: npm install --legacy-peer-deps
 
+      - name: Build Frontend (Explicit)
+        working-directory: Globo-Front-main
+        run: |
+          npm run build
+          echo "Listing dist directory:"
+          ls -R dist
+
       - name: Build Tauri app (Ubuntu/Windows)
         if: matrix.platform != 'macos-latest'
         uses: tauri-apps/tauri-action@v0
