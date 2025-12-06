@@ -15,21 +15,21 @@ import { Router } from '@angular/router';
           <div class="step" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
             <div class="step-icon">{{ currentStep > 1 ? '✅' : '1' }}</div>
             <div class="step-content">
-              <h3>Verificando Docker Desktop</h3>
-              <p *ngIf="currentStep === 1">Verificando se Docker Desktop está instalado...</p>
-              <p *ngIf="currentStep > 1" class="success">Docker Desktop verificado</p>
+              <h3>Verificando Docker Engine</h3>
+              <p *ngIf="currentStep === 1">Verificando se Docker Engine está instalado...</p>
+              <p *ngIf="currentStep > 1" class="success">Docker Engine verificado</p>
             </div>
           </div>
 
           <div class="step" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
             <div class="step-icon">{{ currentStep > 2 ? '✅' : '2' }}</div>
             <div class="step-content">
-              <h3>Instalando Docker Desktop</h3>
-              <p *ngIf="currentStep === 2">Instalando Docker Desktop (isso pode levar alguns minutos)...</p>
+              <h3>Verificando Docker Engine</h3>
+              <p *ngIf="currentStep === 2">Verificando Docker Engine e Docker Compose...</p>
               <div *ngIf="currentStep === 2 && installationProgress" class="progress-bar">
                 <div class="progress-fill" [style.width.%]="installationProgress"></div>
               </div>
-              <p *ngIf="currentStep > 2" class="success">Docker Desktop instalado</p>
+              <p *ngIf="currentStep > 2" class="success">Docker Engine verificado</p>
             </div>
           </div>
 
@@ -247,11 +247,11 @@ export class DockerSetupComponent implements OnInit {
 
   async startSetup() {
     try {
-      // Step 1: Verificar Docker Desktop
+      // Step 1: Verificar Docker Engine
       this.currentStep = 1;
       const { invoke } = await import('@tauri-apps/api/core');
       
-      // Step 2: Instalar Docker Desktop (se necessário)
+      // Step 2: Verificar Docker Engine e Docker Compose
       this.currentStep = 2;
       this.installationProgress = 30;
       
@@ -259,7 +259,7 @@ export class DockerSetupComponent implements OnInit {
         await invoke('install_docker_desktop');
         this.installationProgress = 100;
       } catch (error) {
-        console.log('Docker Desktop já instalado ou erro na instalação:', error);
+        console.log('Docker Engine já instalado ou erro na verificação:', error);
         // Continuar mesmo se houver erro
       }
       

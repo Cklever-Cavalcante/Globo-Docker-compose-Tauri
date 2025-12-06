@@ -1,6 +1,5 @@
 use std::process::Command;
 use std::path::PathBuf;
-use std::fs;
 use std::env;
 
 #[tauri::command]
@@ -104,70 +103,21 @@ fn load_docker_images() -> Result<String, String> {
 
 #[tauri::command]
 fn install_docker_desktop() -> Result<String, String> {
-    println!("Verificando Docker Desktop...");
+    println!("Verificando Docker Engine...");
     
     // Verificar se Docker já está instalado
     if Command::new("docker").arg("version").output().is_ok() {
-        return Ok("Docker Desktop já está instalado".to_string());
+        return Ok("Docker Engine já está instalado e funcionando".to_string());
     }
     
-    let resources_dir = get_resources_dir();
-    
-    #[cfg(target_os = "windows")]
-    {
-        let installer_path = resources_dir.join("installers").join("docker-desktop-installer.exe");
-        
-        if !installer_path.exists() {
-            return Err("Instalador do Docker Desktop não encontrado no bundle".to_string());
-        }
-        
-        println!("Instalando Docker Desktop...");
-        
-        let output = Command::new(&installer_path)
-            .args(["install", "--quiet"])
-            .output()
-            .map_err(|e| format!("Erro ao executar instalador: {}", e))?;
-            
-        if output.status.success() {
-            // Aguardar inicialização do Docker
-            std::thread::sleep(std::time::Duration::from_secs(30));
-            Ok("Docker Desktop instalado com sucesso".to_string())
-        } else {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            Err(format!("Erro na instalação: {}", stderr))
+    // Verificar se docker-compose está disponível
+    if Command::new("docker").arg("compose").arg("version").output().is_err() {
+        if Command::new("docker-compose").arg("--version").output().is_err() {
+            return Err("Docker Compose não está instalado. Por favor, instale o Docker Engine com Docker Compose.".to_string());
         }
     }
     
-    #[cfg(target_os = "macos")]
-    {
-        let installer_path = resources_dir.join("installers").join("Docker.dmg");
-        
-        if !installer_path.exists() {
-            return Err("Instalador do Docker Desktop não encontrado no bundle".to_string());
-        }
-        
-        println!("Instalando Docker Desktop para macOS...");
-        
-        // Montar o DMG e copiar o aplicativo
-        let mount_output = Command::new("hdiutil")
-            .args(&["attach", installer_path.to_str().unwrap()])
-            .output()
-            .map_err(|e| format!("Erro ao montar DMG: {}", e))?;
-            
-        if !mount_output.status.success() {
-            let stderr = String::from_utf8_lossy(&mount_output.stderr);
-            return Err(format!("Erro ao montar DMG: {}", stderr));
-        }
-        
-        // Aguardar inicialização do Docker
-        std::thread::sleep(std::time::Duration::from_secs(30));
-        Ok("Docker Desktop instalado com sucesso no macOS".to_string())
-    }
-    
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    {
-        Err("Instalação automática disponível apenas para Windows e macOS".to_string())
-    }
+    Err("Docker Engine não está instalado. Por favor, instale o Docker Engine para continuar.".to_string())
 }
 
 #[tauri::command]

@@ -40,12 +40,7 @@
       "resources/residencia4-ia-main",
       "resources/docker-images/postgres.tar",
       "resources/docker-images/backend.tar",
-      "resources/docker-images/ia-service.tar",
-      "resources/installers/docker-desktop-installer.exe",
-      "resources/installers/Docker.dmg",
-      "resources/installers/Docker-ARM64.dmg",
-      "scripts/setup-docker.ps1",
-      "scripts/setup-docker.sh"
+      "resources/docker-images/ia-service.tar"
     ]
   }
 }
