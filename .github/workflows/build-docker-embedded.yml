@@ -70,18 +70,96 @@ jobs:
           name: docker-images
           path: Globo-Front-main/src-tauri/resources/docker-images/
 
-      - name: Download Docker Desktop Installer
+      - name: Download Docker Desktop Installer (Windows)
+        if: matrix.platform == 'windows-latest'
         run: |
           mkdir -p Globo-Front-main/src-tauri/resources/installers
           # Download Docker Desktop for Windows
           curl -L "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" -o Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe
 
-      - name: Create setup scripts
+      - name: Download Docker Desktop Installer (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          mkdir -p Globo-Front-main/src-tauri/resources/installers
+          # Download Docker Desktop for macOS (Intel)
+          curl -L "https://desktop.docker.com/mac/main/amd64/Docker.dmg" -o Globo-Front-main/src-tauri/resources/installers/Docker.dmg
+          # Download Docker Desktop for macOS (Apple Silicon)
+          curl -L "https://desktop.docker.com/mac/main/arm64/Docker.dmg" -o Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg || true
+
+      - name: Create setup scripts (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          mkdir -p Globo-Front-main/src-tauri/scripts
+          
+          # macOS setup script
+          cat > Globo-Front-main/src-tauri/scripts/setup-docker.sh << 'EOF'
+          #!/bin/bash
+          # Docker Embedded Setup Script for macOS
+          echo "Verificando Docker Desktop..."
+          
+          if ! command -v docker &> /dev/null; then
+              echo "Instalando Docker Desktop..."
+              # Mount and install Docker.dmg
+              hdiutil attach "./resources/installers/Docker.dmg"
+              cp -R "/Applications/Docker.app" "/Applications/"
+              hdiutil detach "/Volumes/Docker"
+              
+              echo "Aguardando inicialização do Docker..."
+              sleep 30
+              
+              # Carregar imagens Docker
+              echo "Carregando imagens Docker..."
+              docker load -i "./resources/docker-images/postgres.tar"
+              docker load -i "./resources/docker-images/backend.tar"
+              docker load -i "./resources/docker-images/ia-service.tar"
+          fi
+          
+          echo "Docker configurado com sucesso!"
+          EOF
+          chmod +x Globo-Front-main/src-tauri/scripts/setup-docker.sh
+
+      - name: Create setup scripts (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          mkdir -p Globo-Front-main/src-tauri/scripts
+          
+          # Linux setup script - install Docker using official script
+          cat > Globo-Front-main/src-tauri/scripts/setup-docker.sh << 'EOF'
+          #!/bin/bash
+          # Docker Embedded Setup Script for Linux
+          echo "Verificando Docker..."
+          
+          if ! command -v docker &> /dev/null; then
+              echo "Instalando Docker..."
+              # Install Docker using official script
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+              
+              # Start Docker service
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              
+              echo "Aguardando inicialização do Docker..."
+              sleep 10
+              
+              # Carregar imagens Docker
+              echo "Carregando imagens Docker..."
+              sudo docker load -i "./resources/docker-images/postgres.tar"
+              sudo docker load -i "./resources/docker-images/backend.tar"
+              sudo docker load -i "./resources/docker-images/ia-service.tar"
+          fi
+          
+          echo "Docker configurado com sucesso!"
+          EOF
+          chmod +x Globo-Front-main/src-tauri/scripts/setup-docker.sh
+
+      - name: Create setup scripts (Windows)
+        if: matrix.platform == 'windows-latest'
         run: |
           mkdir -p Globo-Front-main/src-tauri/scripts
           
           # Windows setup script
-          cat > Globo-Front-main/src-tauri/scripts/setup-docker.ps1 << 'EOF'
+          @"
           # Docker Embedded Setup Script for Windows
           Write-Host "Verificando Docker Desktop..."
           
@@ -100,7 +178,7 @@ jobs:
           }
           
           Write-Host "Docker configurado com sucesso!"
-          EOF
+          "@ | Out-File -FilePath "Globo-Front-main/src-tauri/scripts/setup-docker.ps1" -Encoding UTF8
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -112,6 +190,17 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install system dependencies (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          brew install pkg-config glib gtk+3
+
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+
       - name: Install frontend dependencies
         working-directory: Globo-Front-main
         run: npm install --legacy-peer-deps
@@ -120,29 +209,13 @@ jobs:
         working-directory: Globo-Front-main
         run: npm run build
 
-      - name: Update tauri.conf.json for embedded resources
-        working-directory: Globo-Front-main
+      - name: Copy resources to Tauri directory
         run: |
-          # Adicionar recursos ao bundle
-          node -e "
-          const fs = require('fs');
-          const config = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-          
-          config.bundle = config.bundle || {};
-          config.bundle.resources = [
-            '../docker-compose.yml',
-            '../.env',
-            '../residencia4-backend-master',
-            '../residencia4-ia-main',
-            'resources/docker-images/postgres.tar',
-            'resources/docker-images/backend.tar',
-            'resources/docker-images/ia-service.tar',
-            'resources/installers/docker-desktop-installer.exe',
-            'scripts/setup-docker.ps1'
-          ];
-          
-          fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(config, null, 2));
-          "
+          # Copy docker-compose.yml and other resources to the correct location
+          cp docker-compose.yml Globo-Front-main/src-tauri/resources/
+          cp .env Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
 
       - name: Build Tauri app with embedded Docker
         uses: tauri-apps/tauri-action@v0

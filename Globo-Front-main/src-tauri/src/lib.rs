@@ -112,16 +112,17 @@ fn install_docker_desktop() -> Result<String, String> {
     }
     
     let resources_dir = get_resources_dir();
-    let installer_path = resources_dir.join("installers").join("docker-desktop-installer.exe");
-    
-    if !installer_path.exists() {
-        return Err("Instalador do Docker Desktop não encontrado no bundle".to_string());
-    }
-    
-    println!("Instalando Docker Desktop...");
     
     #[cfg(target_os = "windows")]
     {
+        let installer_path = resources_dir.join("installers").join("docker-desktop-installer.exe");
+        
+        if !installer_path.exists() {
+            return Err("Instalador do Docker Desktop não encontrado no bundle".to_string());
+        }
+        
+        println!("Instalando Docker Desktop...");
+        
         let output = Command::new(&installer_path)
             .args(["install", "--quiet"])
             .output()
@@ -137,9 +138,35 @@ fn install_docker_desktop() -> Result<String, String> {
         }
     }
     
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
     {
-        Err("Instalação automática disponível apenas para Windows".to_string())
+        let installer_path = resources_dir.join("installers").join("Docker.dmg");
+        
+        if !installer_path.exists() {
+            return Err("Instalador do Docker Desktop não encontrado no bundle".to_string());
+        }
+        
+        println!("Instalando Docker Desktop para macOS...");
+        
+        // Montar o DMG e copiar o aplicativo
+        let mount_output = Command::new("hdiutil")
+            .args(&["attach", installer_path.to_str().unwrap()])
+            .output()
+            .map_err(|e| format!("Erro ao montar DMG: {}", e))?;
+            
+        if !mount_output.status.success() {
+            let stderr = String::from_utf8_lossy(&mount_output.stderr);
+            return Err(format!("Erro ao montar DMG: {}", stderr));
+        }
+        
+        // Aguardar inicialização do Docker
+        std::thread::sleep(std::time::Duration::from_secs(30));
+        Ok("Docker Desktop instalado com sucesso no macOS".to_string())
+    }
+    
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    {
+        Err("Instalação automática disponível apenas para Windows e macOS".to_string())
     }
 }
 
@@ -188,12 +215,20 @@ fn get_project_root() -> PathBuf {
     let current_exe = std::env::current_exe().unwrap_or_else(|_| std::path::PathBuf::from("."));
     let mut path = current_exe.parent().unwrap_or_else(|| std::path::Path::new("."));
     
-    // Sobe na hierarquia até encontrar o docker-compose.yml
+    // Sobe na hierarquia até encontrar o docker-compose.yml ou resources/docker-compose.yml
     while path.parent().is_some() {
+        // Tenta docker-compose.yml no diretório raiz
         let compose_file = path.join("docker-compose.yml");
         if compose_file.exists() {
             return path.to_path_buf();
         }
+        
+        // Tenta resources/docker-compose.yml (para versão embarcada)
+        let resources_compose_file = path.join("resources").join("docker-compose.yml");
+        if resources_compose_file.exists() {
+            return path.to_path_buf();
+        }
+        
         path = path.parent().unwrap();
     }
     

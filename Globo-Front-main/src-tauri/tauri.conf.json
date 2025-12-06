@@ -34,15 +34,18 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../docker-compose.yml",
-      "../.env",
-      "../residencia4-backend-master",
-      "../residencia4-ia-main",
+      "resources/docker-compose.yml",
+      "resources/.env",
+      "resources/residencia4-backend-master",
+      "resources/residencia4-ia-main",
       "resources/docker-images/postgres.tar",
       "resources/docker-images/backend.tar",
       "resources/docker-images/ia-service.tar",
       "resources/installers/docker-desktop-installer.exe",
-      "scripts/setup-docker.ps1"
+      "resources/installers/Docker.dmg",
+      "resources/installers/Docker-ARM64.dmg",
+      "scripts/setup-docker.ps1",
+      "scripts/setup-docker.sh"
     ]
   }
 }
