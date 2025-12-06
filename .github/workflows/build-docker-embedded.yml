@@ -228,37 +228,41 @@ jobs:
 
       - name: Ensure all resource files exist (Windows)
         if: matrix.platform == 'windows-latest'
+        working-directory: Globo-Front-main/src-tauri
         run: |
           # Criar arquivos placeholder se não existirem
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-images/postgres.tar")) {
-            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/docker-images/postgres.tar" -Force
+          if (!(Test-Path "resources/docker-images/postgres.tar")) {
+            New-Item -ItemType File -Path "resources/docker-images/postgres.tar" -Force
           }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-images/backend.tar")) {
-            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/docker-images/backend.tar" -Force
+          if (!(Test-Path "resources/docker-images/backend.tar")) {
+            New-Item -ItemType File -Path "resources/docker-images/backend.tar" -Force
           }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar")) {
-            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar" -Force
+          if (!(Test-Path "resources/docker-images/ia-service.tar")) {
+            New-Item -ItemType File -Path "resources/docker-images/ia-service.tar" -Force
           }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe")) {
-            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe" -Force
+          if (!(Test-Path "resources/installers/docker-desktop-installer.exe")) {
+            New-Item -ItemType File -Path "resources/installers/docker-desktop-installer.exe" -Force
           }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/installers/Docker.dmg")) {
-            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/installers/Docker.dmg" -Force
+          if (!(Test-Path "resources/installers/Docker.dmg")) {
+            New-Item -ItemType File -Path "resources/installers/Docker.dmg" -Force
           }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg")) {
-            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg" -Force
+          if (!(Test-Path "resources/installers/Docker-ARM64.dmg")) {
+            New-Item -ItemType File -Path "resources/installers/Docker-ARM64.dmg" -Force
           }
 
       - name: Ensure all resource files exist (Unix)
         if: matrix.platform != 'windows-latest'
+        working-directory: Globo-Front-main/src-tauri
         run: |
           # Criar arquivos placeholder se não existirem
-          touch Globo-Front-main/src-tauri/resources/docker-images/postgres.tar
-          touch Globo-Front-main/src-tauri/resources/docker-images/backend.tar
-          touch Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar
-          touch Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe
-          touch Globo-Front-main/src-tauri/resources/installers/Docker.dmg
-          touch Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg
+          mkdir -p resources/docker-images
+          mkdir -p resources/installers
+          touch resources/docker-images/postgres.tar
+          touch resources/docker-images/backend.tar
+          touch resources/docker-images/ia-service.tar
+          touch resources/installers/docker-desktop-installer.exe
+          touch resources/installers/Docker.dmg
+          touch resources/installers/Docker-ARM64.dmg
 
       - name: Install frontend dependencies
         working-directory: Globo-Front-main
@@ -275,8 +279,37 @@ jobs:
           cp .env Globo-Front-main/src-tauri/resources/
           cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
           cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+          
+      - name: Ensure scripts exist
+        working-directory: Globo-Front-main/src-tauri
+        run: |
+          # Garantir que os scripts existam antes do build
+          mkdir -p scripts
+          if [ ! -f "scripts/setup-docker.ps1" ]; then
+            echo '# Docker setup script for Windows' > scripts/setup-docker.ps1
+          fi
+          if [ ! -f "scripts/setup-docker.sh" ]; then
+            echo '#!/bin/bash' > scripts/setup-docker.sh
+            echo '# Docker setup script for Unix' >> scripts/setup-docker.sh
+            chmod +x scripts/setup-docker.sh
+          fi
 
-      - name: Build Tauri app with embedded Docker
+      - name: Build Tauri app with embedded Docker (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: Globo-Front-main/src-tauri
+          configPath: tauri-macos.conf.json
+          tagName: ${{ github.ref_name }}-docker-embedded
+          releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
+          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
+          releaseDraft: true
+          prerelease: false
+
+      - name: Build Tauri app with embedded Docker (Windows/Linux)
+        if: matrix.platform != 'macos-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
