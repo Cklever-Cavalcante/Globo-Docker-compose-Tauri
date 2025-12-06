@@ -1,0 +1,632 @@
+{
+  "domingo": [
+    {
+      "time": "04:45",
+      "program": "Corujão II"
+    },
+    {
+      "time": "05:45",
+      "program": "Santa Missa"
+    },
+    {
+      "time": "06:35",
+      "program": "Globo Comunidade"
+    },
+    {
+      "time": "07:05",
+      "program": "Auto Esporte"
+    },
+    {
+      "time": "07:35",
+      "program": "Globo Rural"
+    },
+    {
+      "time": "08:45",
+      "program": "Viver Sertanejo"
+    },
+    {
+      "time": "09:30",
+      "program": "Esporte Espetacular"
+    },
+    {
+      "time": "10:25",
+      "program": "Futebol"
+    },
+    {
+      "time": "12:35",
+      "program": "Temperatura Máxima"
+    },
+    {
+      "time": "14:30",
+      "program": "Domingão com Huck"
+    },
+    {
+      "time": "15:30",
+      "program": "Bora Pro Jogo"
+    },
+    {
+      "time": "15:45",
+      "program": "Futebol"
+    },
+    {
+      "time": "18:10",
+      "program": "Domingão com Huck"
+    },
+    {
+      "time": "20:30",
+      "program": "Fantástico"
+    },
+    {
+      "time": "23:10",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:45",
+      "program": "Circuito Sertanejo"
+    },
+    {
+      "time": "00:35",
+      "program": "Domingo Maior"
+    },
+    {
+      "time": "02:55",
+      "program": "Comédia na Madruga I"
+    }
+  ],
+  "segunda": [
+    {
+      "time": "04:00",
+      "program": "Hora Um"
+    },
+    {
+      "time": "06:00",
+      "program": "Bom Dia PE"
+    },
+    {
+      "time": "08:30",
+      "program": "Bom Dia Brasil"
+    },
+    {
+      "time": "09:30",
+      "program": "Encontro com Patrícia Poeta"
+    },
+    {
+      "time": "10:35",
+      "program": "Mais Você"
+    },
+    {
+      "time": "11:45",
+      "program": "NE TV I"
+    },
+    {
+      "time": "13:00",
+      "program": "Globo Esporte"
+    },
+    {
+      "time": "13:25",
+      "program": "Jornal Hoje"
+    },
+    {
+      "time": "14:45",
+      "program": "Edição Especial História de Amor"
+    },
+    {
+      "time": "15:25",
+      "program": "Sessão da Tarde"
+    },
+    {
+      "time": "17:20",
+      "program": "Vale a Pena Ver de Novo"
+    },
+    {
+      "time": "18:25",
+      "program": "Êta Mundo Melhor"
+    },
+    {
+      "time": "19:10",
+      "program": "NE TV II"
+    },
+    {
+      "time": "19:40",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "20:30",
+      "program": "Jornal Nacional"
+    },
+    {
+      "time": "21:20",
+      "program": "Vale Tudo"
+    },
+    {
+      "time": "22:25",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:20",
+      "program": "Profissão Repórter"
+    },
+    {
+      "time": "00:00",
+      "program": "Jornal da Globo"
+    },
+    {
+      "time": "00:50",
+      "program": "Conversa com Bial"
+    },
+    {
+      "time": "01:30",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "02:15",
+      "program": "Comédia na Madruga I"
+    },
+    {
+      "time": "03:10",
+      "program": "Comédia na Madruga II"
+    }
+  ],
+  "terça": [
+    {
+      "time": "04:00",
+      "program": "Hora Um"
+    },
+    {
+      "time": "06:00",
+      "program": "Bom Dia PE"
+    },
+    {
+      "time": "08:30",
+      "program": "Bom Dia Brasil"
+    },
+    {
+      "time": "09:30",
+      "program": "Encontro com Patrícia Poeta"
+    },
+    {
+      "time": "10:35",
+      "program": "Mais Você"
+    },
+    {
+      "time": "11:45",
+      "program": "NE TV I"
+    },
+    {
+      "time": "13:00",
+      "program": "Globo Esporte"
+    },
+    {
+      "time": "13:25",
+      "program": "Jornal Hoje"
+    },
+    {
+      "time": "14:45",
+      "program": "Edição Especial História de Amor"
+    },
+    {
+      "time": "15:25",
+      "program": "Sessão da Tarde"
+    },
+    {
+      "time": "17:20",
+      "program": "Vale a Pena Ver de Novo"
+    },
+    {
+      "time": "18:25",
+      "program": "Êta Mundo Melhor"
+    },
+    {
+      "time": "19:10",
+      "program": "NE TV II"
+    },
+    {
+      "time": "19:40",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "20:30",
+      "program": "Jornal Nacional"
+    },
+    {
+      "time": "21:20",
+      "program": "Vale Tudo"
+    },
+    {
+      "time": "22:25",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:20",
+      "program": "This Is Us"
+    },
+    {
+      "time": "00:00",
+      "program": "Jornal da Globo"
+    },
+    {
+      "time": "00:50",
+      "program": "Conversa com Bial"
+    },
+    {
+      "time": "01:30",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "02:15",
+      "program": "Comédia na Madruga I"
+    },
+    {
+      "time": "03:10",
+      "program": "Comédia na Madruga II"
+    }
+  ],
+  "quarta": [
+    {
+      "time": "04:00",
+      "program": "Hora Um"
+    },
+    {
+      "time": "06:00",
+      "program": "Bom Dia PE"
+    },
+    {
+      "time": "08:30",
+      "program": "Bom Dia Brasil"
+    },
+    {
+      "time": "09:30",
+      "program": "Encontro com Patrícia Poeta"
+    },
+    {
+      "time": "10:35",
+      "program": "Mais Você"
+    },
+    {
+      "time": "11:45",
+      "program": "NE TV I"
+    },
+    {
+      "time": "13:00",
+      "program": "Globo Esporte"
+    },
+    {
+      "time": "13:25",
+      "program": "Jornal Hoje"
+    },
+    {
+      "time": "14:45",
+      "program": "Edição Especial História de Amor"
+    },
+    {
+      "time": "15:25",
+      "program": "Sessão da Tarde"
+    },
+    {
+      "time": "17:20",
+      "program": "Vale a Pena Ver de Novo"
+    },
+    {
+      "time": "18:25",
+      "program": "Êta Mundo Melhor"
+    },
+    {
+      "time": "19:10",
+      "program": "NE TV II"
+    },
+    {
+      "time": "19:40",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "20:30",
+      "program": "Jornal Nacional"
+    },
+    {
+      "time": "21:20",
+      "program": "Vale Tudo"
+    },
+    {
+      "time": "22:25",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:20",
+      "program": "Cinema Especial"
+    },
+    {
+      "time": "00:20",
+      "program": "Jornal da Globo"
+    },
+    {
+      "time": "01:10",
+      "program": "Conversa com Bial"
+    },
+    {
+      "time": "01:50",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "02:35",
+      "program": "Comédia na Madruga I"
+    },
+    {
+      "time": "03:20",
+      "program": "Comédia na Madruga II"
+    }
+  ],
+  "quinta": [
+    {
+      "time": "04:00",
+      "program": "Hora Um"
+    },
+    {
+      "time": "06:00",
+      "program": "Bom Dia PE"
+    },
+    {
+      "time": "08:30",
+      "program": "Bom Dia Brasil"
+    },
+    {
+      "time": "09:30",
+      "program": "Encontro com Patrícia Poeta"
+    },
+    {
+      "time": "10:35",
+      "program": "Mais Você"
+    },
+    {
+      "time": "11:45",
+      "program": "NE TV II"
+    },
+    {
+      "time": "13:00",
+      "program": "Globo Esporte"
+    },
+    {
+      "time": "13:25",
+      "program": "Jornal Hoje"
+    },
+    {
+      "time": "14:45",
+      "program": "Edição Especial História de Amor"
+    },
+    {
+      "time": "15:25",
+      "program": "Sessão da Tarde"
+    },
+    {
+      "time": "17:20",
+      "program": "Vale a Pena Ver de Novo"
+    },
+    {
+      "time": "18:25",
+      "program": "Êta Mundo Melhor"
+    },
+    {
+      "time": "19:10",
+      "program": "NE TV II"
+    },
+    {
+      "time": "19:40",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "20:30",
+      "program": "Jornal Nacional"
+    },
+    {
+      "time": "21:20",
+      "program": "Vale Tudo"
+    },
+    {
+      "time": "22:25",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:20",
+      "program": "Linha Direta"
+    },
+    {
+      "time": "00:20",
+      "program": "Jornal da Globo"
+    },
+    {
+      "time": "01:10",
+      "program": "Conversa com Bial"
+    },
+    {
+      "time": "01:50",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "02:35",
+      "program": "Comédia na Madruga I"
+    },
+    {
+      "time": "03:20",
+      "program": "Comédia na Madruga II"
+    }
+  ],
+  "sexta": [
+    {
+      "time": "04:00",
+      "program": "Hora Um"
+    },
+    {
+      "time": "06:00",
+      "program": "Bom Dia PE"
+    },
+    {
+      "time": "08:30",
+      "program": "Bom Dia Brasil"
+    },
+    {
+      "time": "09:30",
+      "program": "Encontro com Patrícia Poeta"
+    },
+    {
+      "time": "10:35",
+      "program": "Mais Você"
+    },
+    {
+      "time": "11:45",
+      "program": "NE TV I"
+    },
+    {
+      "time": "13:00",
+      "program": "Globo Esporte"
+    },
+    {
+      "time": "13:25",
+      "program": "Jornal Hoje"
+    },
+    {
+      "time": "14:45",
+      "program": "Edição Especial História de Amor"
+    },
+    {
+      "time": "15:25",
+      "program": "Sessão da Tarde"
+    },
+    {
+      "time": "17:20",
+      "program": "Vale a Pena Ver de Novo"
+    },
+    {
+      "time": "18:25",
+      "program": "Êta Mundo Melhor"
+    },
+    {
+      "time": "19:10",
+      "program": "NE TV II"
+    },
+    {
+      "time": "19:40",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "20:30",
+      "program": "Jornal Nacional"
+    },
+    {
+      "time": "21:20",
+      "program": "Vale Tudo"
+    },
+    {
+      "time": "22:25",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:20",
+      "program": "Globo Repórter"
+    },
+    {
+      "time": "00:10",
+      "program": "Jornal da Globo"
+    },
+    {
+      "time": "01:00",
+      "program": "Conversa com Bial"
+    },
+    {
+      "time": "01:40",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "02:25",
+      "program": "Comédia na Madruga I"
+    },
+    {
+      "time": "03:10",
+      "program": "Comédia na Madruga II"
+    }
+  ],
+  "sábado": [
+    {
+      "time": "04:35",
+      "program": "Corujão II"
+    },
+    {
+      "time": "06:00",
+      "program": "Globo Rural"
+    },
+    {
+      "time": "06:50",
+      "program": "Bom Dia Sábado"
+    },
+    {
+      "time": "07:50",
+      "program": "Pequenas Empresas & Grandes Negócios"
+    },
+    {
+      "time": "08:30",
+      "program": "É de Casa"
+    },
+    {
+      "time": "11:45",
+      "program": "NE TV I"
+    },
+    {
+      "time": "13:00",
+      "program": "Globo Esporte"
+    },
+    {
+      "time": "13:25",
+      "program": "Jornal Hoje"
+    },
+    {
+      "time": "14:10",
+      "program": "Edição Especial História de Amor"
+    },
+    {
+      "time": "14:50",
+      "program": "Sessão de Sábado"
+    },
+    {
+      "time": "16:20",
+      "program": "Caldeirão com Mion"
+    },
+    {
+      "time": "18:40",
+      "program": "Êta Mundo Melhor"
+    },
+    {
+      "time": "19:20",
+      "program": "NE TV II"
+    },
+    {
+      "time": "19:45",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "20:30",
+      "program": "Jornal Nacional"
+    },
+    {
+      "time": "21:20",
+      "program": "Vale Tudo"
+    },
+    {
+      "time": "22:25",
+      "program": "Estrela da Casa"
+    },
+    {
+      "time": "23:10",
+      "program": "Altas Horas"
+    },
+    {
+      "time": "01:00",
+      "program": "Supercine"
+    },
+    {
+      "time": "02:30",
+      "program": "Dona de Mim"
+    },
+    {
+      "time": "03:15",
+      "program": "Corujão I"
+    }
+  ]
+}

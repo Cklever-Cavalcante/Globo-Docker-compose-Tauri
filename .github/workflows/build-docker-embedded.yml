@@ -64,6 +64,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Copy essential files to resources
+        run: |
+          mkdir -p Globo-Front-main/src-tauri/resources
+          cp docker-compose.yml Globo-Front-main/src-tauri/resources/
+          cp .env Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+
       - name: Download Docker images
         uses: actions/download-artifact@v4
         with:

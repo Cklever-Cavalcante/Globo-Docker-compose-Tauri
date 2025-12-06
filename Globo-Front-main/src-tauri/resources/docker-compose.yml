@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: docker.io/library/postgres:15-alpine
+    container_name: globo-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root}
+      POSTGRES_DB: ${POSTGRES_DB:-globo_monitoramento}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - globo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # IA Service (Machine Learning)
+  ia-service:
+    build:
+      context: ./residencia4-ia-main
+      dockerfile: Dockerfile
+    container_name: globo-ia-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ia_temp:/app/temp_videos_ia
+    networks:
+      - globo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Backend API
+  backend:
+    build:
+      context: ./residencia4-backend-master
+      dockerfile: Dockerfile
+    container_name: globo-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ia-service:
+        condition: service_healthy
+    environment:
+      POSTGRES_SERVER: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root}
+      POSTGRES_DB: ${POSTGRES_DB:-globo_monitoramento}
+      IA_SERVICE_URL: http://ia-service:8001/analyze_video
+    volumes:
+      - video_data:/app/video_ocorrencias
+      - thumbnail_data:/app/video_thumbnails
+      - hls_data:/app/hls_output
+    networks:
+      - globo-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Named volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+  video_data:
+    driver: local
+  thumbnail_data:
+    driver: local
+  hls_data:
+    driver: local
+  ia_temp:
+    driver: local
+
+# Network for inter-container communication
+networks:
+  globo-network:
+    driver: bridge
