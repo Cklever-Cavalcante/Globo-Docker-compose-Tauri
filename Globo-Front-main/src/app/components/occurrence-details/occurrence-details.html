@@ -1,0 +1,119 @@
+<div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in" 
+     (click)="onClose()">
+  
+  <div class="bg-[#181818] w-full max-w-5xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden relative flex flex-col max-h-[90vh]" 
+       (click)="$event.stopPropagation()">
+    
+    <div class="px-6 py-4 border-b border-white/5 flex justify-between items-center bg-[#121212]">
+      <div class="flex items-center gap-4">
+        <div class="w-10 h-10 rounded-full bg-[#F47F20]/10 flex items-center justify-center text-[#F47F20] border border-[#F47F20]/20">
+           <i class="fas fa-search-plus"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-white leading-tight">Análise de Ocorrência</h2>
+          <div class="flex items-center gap-2 mt-1">
+             <span class="text-[10px] bg-white/5 px-2 py-0.5 rounded text-gray-400 font-mono border border-white/5">ID: {{ occurrence?.id }}</span>
+             <span *ngIf="occurrence" class="w-1 h-1 rounded-full bg-gray-600"></span>
+             <span class="text-[10px] text-gray-500 uppercase tracking-widest">{{ occurrence?.data_hora | date:'dd/MM/yyyy' }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <button (click)="onClose()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition">
+        <i class="fas fa-times text-lg"></i>
+      </button>
+    </div>
+
+    <div class="overflow-y-auto custom-scrollbar flex-1 bg-[#121212]/50">
+      
+      <div *ngIf="loading" class="flex flex-col justify-center items-center h-96 gap-4">
+        <div class="w-10 h-10 border-2 border-[#F47F20] border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-gray-500 text-xs animate-pulse tracking-widest uppercase">Carregando dados...</p>
+      </div>
+
+      <div *ngIf="occurrence && !loading" class="grid grid-cols-1 lg:grid-cols-12 min-h-[500px]">
+        
+        <div class="lg:col-span-8 bg-black flex flex-col justify-center relative border-r border-white/5">
+          <div class="relative w-full aspect-video bg-black group">
+             <video [src]="occurrence.video_url" controls autoplay class="w-full h-full object-contain"></video>
+          </div>
+          
+          <div class="p-4 flex justify-between items-center bg-[#0a0a0a] border-t border-white/5">
+            <div class="flex gap-4 text-xs text-gray-500 font-mono">
+                <span class="flex items-center gap-2"><i class="fas fa-clock"></i> Duração: {{ occurrence.duracao | number:'1.0-2' }}s</span>
+                <span class="flex items-center gap-2"><i class="fas fa-video"></i> 1080p</span>
+            </div>
+            <a [href]="occurrence.video_url" target="_blank" class="text-xs text-[#F47F20] hover:text-white transition flex items-center gap-2 font-bold uppercase tracking-wide px-3 py-1.5 rounded hover:bg-[#F47F20]/10">
+               <i class="fas fa-download"></i> Baixar Mídia
+            </a>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4 p-6 flex flex-col h-full bg-[#151515]">
+          
+          <div class="mb-6">
+            <div class="flex justify-between items-start mb-2">
+                <span class="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border"
+                  [ngClass]="{
+                    'border-red-500/30 text-red-400 bg-red-500/10': occurrence.nivel === 'X',
+                    'border-orange-500/30 text-orange-400 bg-orange-500/10': occurrence.nivel === 'A',
+                    'border-yellow-500/30 text-yellow-400 bg-yellow-500/10': occurrence.nivel === 'B',
+                    'border-blue-500/30 text-blue-400 bg-blue-500/10': occurrence.nivel === 'C'
+                  }">
+                  Nível {{ occurrence.nivel }}
+                </span>
+                <span class="text-[10px] text-gray-500 font-mono">{{ occurrence.data_hora | date:'HH:mm:ss' }}</span>
+            </div>
+            <h3 class="text-xl font-bold text-white leading-snug">{{ occurrence.titulo }}</h3>
+          </div>
+
+          <div class="flex-1 space-y-6">
+             <div class="relative pl-4 border-l-2 border-white/10 hover:border-[#F47F20] transition-colors">
+               <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Programa</span>
+               <span class="text-sm text-white font-medium">{{ occurrence.programa || 'Monitoramento Geral' }}</span>
+             </div>
+
+             <div class="relative pl-4 border-l-2 border-white/10 hover:border-[#F47F20] transition-colors">
+              <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Status Atual</span>
+              <span class="text-sm font-bold flex items-center gap-2" [ngClass]="{
+                  'text-green-500': occurrence.status === 'Aprovado',
+                  'text-red-500': occurrence.status === 'Rejeitado',
+                  'text-yellow-500': occurrence.status === 'Não Validado'
+                }">
+                <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
+                {{ occurrence.status }}
+              </span>
+            </div>
+
+             <div class="relative pl-4 border-l-2 border-white/10 hover:border-[#F47F20] transition-colors">
+               <span class="text-[10px] text-gray-500 uppercase font-bold tracking-wider block mb-1">Descrição Técnica</span>
+               <p class="text-sm text-gray-400 leading-relaxed">{{ occurrence.descricao }}</p>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="occurrence && !loading" class="p-5 bg-[#121212] border-t border-white/5 flex justify-end gap-3 z-10">
+      
+      <button (click)="onClose()" [disabled]="processing" class="px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide text-gray-500 hover:text-white hover:bg-white/5 transition disabled:opacity-50">
+        Cancelar
+      </button>
+      
+      <button (click)="reject()" 
+              [disabled]="processing" 
+              class="px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[110px] justify-center">
+        <span *ngIf="processing" class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+        <span *ngIf="!processing"><i class="fas fa-times mr-1"></i> Rejeitar</span>
+      </button>
+      
+      <button (click)="validate()" 
+              [disabled]="processing" 
+              class="px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wide bg-green-500/10 border border-green-500/30 text-green-500 hover:bg-green-500 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[110px] justify-center shadow-[0_0_15px_rgba(34,197,94,0.1)]">
+        <span *ngIf="processing" class="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+        <span *ngIf="!processing"><i class="fas fa-check mr-1"></i> Validar</span>
+      </button>
+    </div>
+
+  </div>
+</div>
