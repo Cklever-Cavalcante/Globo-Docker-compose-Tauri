@@ -64,13 +64,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy essential files to resources
+      - name: Copy essential files to resources (Unix)
+        if: matrix.platform != 'windows-latest'
         run: |
           mkdir -p Globo-Front-main/src-tauri/resources
           cp docker-compose.yml Globo-Front-main/src-tauri/resources/
           cp .env Globo-Front-main/src-tauri/resources/
           cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
           cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+
+      - name: Copy essential files to resources (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          New-Item -ItemType Directory -Force -Path "Globo-Front-main/src-tauri/resources"
+          Copy-Item "docker-compose.yml" -Destination "Globo-Front-main/src-tauri/resources/"
+          Copy-Item ".env" -Destination "Globo-Front-main/src-tauri/resources/"
+          Copy-Item "residencia4-backend-master" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
+          Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
 
       - name: Download Docker images
         uses: actions/download-artifact@v4
@@ -81,9 +91,16 @@ jobs:
       - name: Download Docker Desktop Installer (Windows)
         if: matrix.platform == 'windows-latest'
         run: |
-          mkdir -p Globo-Front-main/src-tauri/resources/installers
+          New-Item -ItemType Directory -Force -Path "Globo-Front-main/src-tauri/resources/installers"
           # Download Docker Desktop for Windows
-          curl -L "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" -o Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe
+          Invoke-WebRequest -Uri "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe" -OutFile "Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe"
+          # Verificar se o arquivo foi baixado
+          if (Test-Path "Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe") {
+            Write-Host "Docker Desktop Installer baixado com sucesso"
+          } else {
+            Write-Error "Falha ao baixar Docker Desktop Installer"
+            exit 1
+          }
 
       - name: Download Docker Desktop Installer (macOS)
         if: matrix.platform == 'macos-latest'
@@ -207,7 +224,41 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Ensure all resource files exist (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # Criar arquivos placeholder se não existirem
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-images/postgres.tar")) {
+            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/docker-images/postgres.tar" -Force
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-images/backend.tar")) {
+            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/docker-images/backend.tar" -Force
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar")) {
+            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar" -Force
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe")) {
+            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe" -Force
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/installers/Docker.dmg")) {
+            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/installers/Docker.dmg" -Force
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg")) {
+            New-Item -ItemType File -Path "Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg" -Force
+          }
+
+      - name: Ensure all resource files exist (Unix)
+        if: matrix.platform != 'windows-latest'
+        run: |
+          # Criar arquivos placeholder se não existirem
+          touch Globo-Front-main/src-tauri/resources/docker-images/postgres.tar
+          touch Globo-Front-main/src-tauri/resources/docker-images/backend.tar
+          touch Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar
+          touch Globo-Front-main/src-tauri/resources/installers/docker-desktop-installer.exe
+          touch Globo-Front-main/src-tauri/resources/installers/Docker.dmg
+          touch Globo-Front-main/src-tauri/resources/installers/Docker-ARM64.dmg
 
       - name: Install frontend dependencies
         working-directory: Globo-Front-main
