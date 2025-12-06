@@ -1,0 +1,167 @@
+name: 'Auto Release after Build'
+
+on:
+  workflow_run:
+    workflows: ["Build Docker Embedded (Opção 1)"]
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get workflow artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: ${{ github.event.workflow_run.id }}
+            });
+            
+            const artifactNames = artifacts.data.artifacts.map(a => a.name);
+            console.log('Available artifacts:', artifactNames);
+            
+            // Download artifacts
+            for (const artifact of artifacts.data.artifacts) {
+              const download = await github.rest.actions.downloadArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+                archive_format: 'zip'
+              });
+              
+              const fs = require('fs');
+              fs.writeFileSync(`${artifact.name}.zip`, Buffer.from(download.data));
+            }
+
+      - name: Extract artifacts
+        run: |
+          mkdir -p release-files
+          for zip in *.zip; do
+            if [ -f "$zip" ]; then
+              dirname=$(basename "$zip" .zip)
+              mkdir -p "release-files/$dirname"
+              unzip -q "$zip" -d "release-files/$dirname/"
+            fi
+          done
+          
+          # Organizar arquivos por plataforma
+          mkdir -p release-files/windows
+          mkdir -p release-files/macos  
+          mkdir -p release-files/linux
+          
+          # Mover instaladores para pastas apropriadas
+          find release-files -name "*.exe" -exec cp {} release-files/windows/ \;
+          find release-files -name "*.msi" -exec cp {} release-files/windows/ \;
+          find release-files -name "*.dmg" -exec cp {} release-files/macos/ \;
+          find release-files -name "*.deb" -exec cp {} release-files/linux/ \;
+          find release-files -name "*.AppImage" -exec cp {} release-files/linux/ \;
+
+      - name: Generate release version
+        id: version
+        run: |
+          VERSION=$(date +'%Y.%m.%d')-${{ github.run_number }}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: 🎬 Globo Monitor ${{ steps.version.outputs.version }} - Docker Embarcado
+          body: |
+            # 🎬 Globo Monitor ${{ steps.version.outputs.version }}
+            
+            Sistema completo de monitoramento de qualidade de vídeo com Inteligência Artificial.
+            
+            ## ✨ Novidades desta versão
+            - 📦 **Docker Embarcado**: Todos os serviços incluídos no instalador
+            - 🚀 **Instalação Automática**: Docker Desktop e imagens pré-carregadas
+            - 🖥️ **Multi-plataforma**: Windows, macOS e Linux
+            - 🔧 **Configuração Zero**: Execute e pronto!
+            
+            ## 📋 Requisitos Mínimos
+            | Sistema | Versão | RAM | Espaço |
+            |---------|---------|-----|--------|
+            | Windows | 10/11 | 4GB | 2GB |
+            | macOS | 10.15+ | 4GB | 2GB |
+            | Linux | Ubuntu 18+ | 4GB | 2GB |
+            
+            ## 🔧 Instalação Super Rápida
+            ### Windows
+            1. Baixe `globo-monitor-setup.exe`
+            2. Execute como administrador
+            3. Pronto! O app abre automaticamente
+            
+            ### macOS  
+            1. Baixe `globo-monitor.dmg`
+            2. Arraste para Applications
+            3. Execute do Launchpad
+            
+            ### Linux
+            1. Baixe `globo-monitor.AppImage`
+            2. `chmod +x globo-monitor.AppImage`
+            3. Execute o arquivo
+            
+            ## 🎯 O que você ganha
+            ✅ **Monitoramento em tempo real** de qualidade de vídeo
+            ✅ **Detecção automática** de falhas de áudio/vídeo  
+            ✅ **Análise de inteligibilidade** com IA avançada
+            ✅ **Detecção de lip-sync** des sincronizado
+            ✅ **Dashboard interativo** com métricas detalhadas
+            ✅ **Notificações automáticas** de problemas
+            ✅ **Histórico completo** de ocorrências
+            
+            ## 🐳 Tecnologias Incluídas
+            - **PostgreSQL 15** - Banco de dados robusto
+            - **FastAPI Backend** - API ultra-rápida  
+            - **IA com PyTorch/TensorFlow** - Machine learning avançado
+            - **Angular 20 + Tauri 2** - Interface moderna e nativa
+            - **Docker Compose** - Orquestração de containers
+            - **YOLOv8 + SyncNet** - Detecção de objetos e sincronia
+            
+            ## 📊 Estatísticas do Build
+            - **Build ID:** ${{ github.run_number }}
+            - **Data:** $(date +'%d/%m/%Y %H:%M')
+            - **Commit:** ${{ github.sha }}
+            - **Branch:** ${{ github.ref_name }}
+            
+            ---
+            
+            ### 💡 **Dica Pro**: 
+            Assim que instalar, o sistema já começa a monitorar automaticamente. 
+            **Zero configuração necessária!**
+            
+            ### 🆘 **Precisa de ajuda?**
+            - 📧 Abra uma issue no GitHub
+            - 📖 Veja o README para documentação completa
+            - 🎥 Assista ao vídeo de demonstração
+            
+            ---
+            
+            **🚀 Instaladores pré-configurados com todos os serviços Docker**
+          files: |
+            release-files/windows/*
+            release-files/macos/*
+            release-files/linux/*
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update latest tag
+        run: |
+          git tag -f latest
+          git push -f origin latest
