@@ -68,6 +68,8 @@ jobs:
         if: matrix.platform != 'windows-latest'
         run: |
           mkdir -p Globo-Front-main/src-tauri/resources
+          rm -rf Globo-Front-main/src-tauri/resources/residencia4-backend-master
+          rm -rf Globo-Front-main/src-tauri/resources/residencia4-ia-main
           cp docker-compose.yml Globo-Front-main/src-tauri/resources/
           cp .env Globo-Front-main/src-tauri/resources/
           cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
@@ -77,10 +79,12 @@ jobs:
         if: matrix.platform == 'windows-latest'
         run: |
           New-Item -ItemType Directory -Force -Path "Globo-Front-main/src-tauri/resources"
-          Copy-Item "docker-compose.yml" -Destination "Globo-Front-main/src-tauri/resources/"
-          Copy-Item ".env" -Destination "Globo-Front-main/src-tauri/resources/"
-          Copy-Item "residencia4-backend-master" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
-          Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
+          Copy-Item "docker-compose.yml" -Destination "Globo-Front-main/src-tauri/resources/" -Force
+          Copy-Item ".env" -Destination "Globo-Front-main/src-tauri/resources/" -Force
+          if (Test-Path "Globo-Front-main/src-tauri/resources/residencia4-backend-master") { Remove-Item -Path "Globo-Front-main/src-tauri/resources/residencia4-backend-master" -Recurse -Force }
+          if (Test-Path "Globo-Front-main/src-tauri/resources/residencia4-ia-main") { Remove-Item -Path "Globo-Front-main/src-tauri/resources/residencia4-ia-main" -Recurse -Force }
+          Copy-Item "residencia4-backend-master" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse -Force
+          Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse -Force
 
       - name: Download Docker images
         uses: actions/download-artifact@v4
@@ -92,13 +96,13 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io docker-compose-plugin
+          sudo apt-get install -y docker.io docker-compose
           sudo systemctl enable docker
           sudo systemctl start docker
           sudo usermod -aG docker $USER
           # Verificar instalação
           docker version
-          docker compose version || docker-compose version
+          docker-compose version || docker compose version
 
       - name: Install Docker Engine (Windows)
         if: matrix.platform == 'windows-latest'
@@ -117,9 +121,12 @@ jobs:
         run: |
           # Instalar Docker Engine via Homebrew
           brew install docker docker-compose
-          # Verificar instalação
-          docker version
-          docker compose version || docker-compose version
+          # Iniciar Docker daemon (simulado para CI)
+          # Nota: Em CI, o Docker daemon real não está disponível no macOS
+          echo "Docker Engine instalado via Homebrew (simulação para CI)"
+          # Verificar instalação (comando disponível)
+          which docker
+          which docker-compose
 
 
 
@@ -181,13 +188,39 @@ jobs:
         working-directory: Globo-Front-main
         run: npm run build
 
-      - name: Copy resources to Tauri directory
+      - name: Copy resources to Tauri directory (if not exists)
+        if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'macos-latest'
         run: |
-          # Copy docker-compose.yml and other resources to the correct location
-          cp docker-compose.yml Globo-Front-main/src-tauri/resources/
-          cp .env Globo-Front-main/src-tauri/resources/
-          cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
-          cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+          # Copy docker-compose.yml and other resources to the correct location only if not exists
+          if [ ! -f "Globo-Front-main/src-tauri/resources/docker-compose.yml" ]; then
+            cp docker-compose.yml Globo-Front-main/src-tauri/resources/
+          fi
+          if [ ! -f "Globo-Front-main/src-tauri/resources/.env" ]; then
+            cp .env Globo-Front-main/src-tauri/resources/
+          fi
+          if [ ! -d "Globo-Front-main/src-tauri/resources/residencia4-backend-master" ]; then
+            cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
+          fi
+          if [ ! -d "Globo-Front-main/src-tauri/resources/residencia4-ia-main" ]; then
+            cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+          fi
+
+      - name: Copy resources to Tauri directory (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # Copy docker-compose.yml and other resources to the correct location only if not exists
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-compose.yml")) {
+            Copy-Item "docker-compose.yml" -Destination "Globo-Front-main/src-tauri/resources/"
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/.env")) {
+            Copy-Item ".env" -Destination "Globo-Front-main/src-tauri/resources/"
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/residencia4-backend-master")) {
+            Copy-Item "residencia4-backend-master" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
+          }
+          if (!(Test-Path "Globo-Front-main/src-tauri/resources/residencia4-ia-main")) {
+            Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
+          }
           
       - name: Ensure scripts exist
         working-directory: Globo-Front-main/src-tauri
