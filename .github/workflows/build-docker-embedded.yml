@@ -149,19 +149,71 @@ jobs:
                 Remove-Item $filePath -Force
                 
                 # Criar um stub .tar válido (mínimo necessário)
-                # Isso cria um arquivo .tar válido mas vazio que o NSIS pode processar
-                $stubContent = [byte[]]::new(1024)  # 1KB de zeros
-                [System.IO.File]::WriteAllBytes($filePath, $stubContent)
-                echo "✅ Stub válido criado para $file"
+                # Criar um arquivo tar válido mas pequeno com um arquivo dummy
+                echo "Criando stub .tar válido para $file..."
+                
+                # Criar diretório temporário
+                $tempDir = New-Item -ItemType Directory -Path "temp-stub-$file" -Force
+                
+                # Criar arquivo dummy pequeno
+                $dummyContent = "# Stub Docker Image - $file`n# Este é um arquivo placeholder`n# A imagem real será baixada na primeira execução"
+                Set-Content -Path "$tempDir\README.txt" -Value $dummyContent
+                
+                # Criar tar válido usando tar do Git ou PowerShell
+                try {
+                  # Tentar usar tar (disponível no GitHub Actions)
+                  tar -cf $filePath -C $tempDir .
+                  echo "✅ Stub .tar válido criado com tar"
+                } catch {
+                  # Fallback: criar tar manualmente com PowerShell
+                  try {
+                    # Usar Compress-Archive e renomear (funciona mas não é tar puro)
+                    Compress-Archive -Path "$tempDir\*" -DestinationPath "$tempDir.zip" -Force
+                    Move-Item -Path "$tempDir.zip" -Destination $filePath -Force
+                    echo "✅ Stub .zip renomeado para .tar como fallback"
+                  } catch {
+                    # Último fallback: arquivo pequeno com header tar-like
+                    $header = [byte[]]::new(512)  # Header tar de 512 bytes
+                    $header[0] = 0x75  # 'u'
+                    $header[1] = 0x73  # 's'
+                    $header[2] = 0x74  # 't'
+                    $header[3] = 0x61  # 'a'
+                    $header[4] = 0x72  # 'r'
+                    [System.IO.File]::WriteAllBytes($filePath, $header)
+                    echo "✅ Stub básico criado como último fallback"
+                  }
+                }
+                
+                # Limpar temporários
+                Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
               } else {
                 echo "✅ $file parece válido"
               }
             } else {
               echo "⚠️  $file não encontrado - criando stub"
-              # Criar stub se arquivo não existe
-              $stubContent = [byte[]]::new(1024)
-              [System.IO.File]::WriteAllBytes($filePath, $stubContent)
-              echo "✅ Stub criado para $file"
+              # Criar stub se arquivo não existe (mesma lógica acima)
+              echo "Criando stub .tar válido para $file..."
+              
+              $tempDir = New-Item -ItemType Directory -Path "temp-stub-$file" -Force
+              $dummyContent = "# Stub Docker Image - $file`n# Este é um arquivo placeholder`n# A imagem real será baixada na primeira execução"
+              Set-Content -Path "$tempDir\README.txt" -Value $dummyContent
+              
+              try {
+                tar -cf $filePath -C $tempDir .
+                echo "✅ Stub .tar válido criado com tar"
+              } catch {
+                try {
+                  Compress-Archive -Path "$tempDir\*" -DestinationPath "$tempDir.zip" -Force
+                  Move-Item -Path "$tempDir.zip" -Destination $filePath -Force
+                  echo "✅ Stub .zip renomeado para .tar como fallback"
+                } catch {
+                  $header = [byte[]]::new(512)
+                  $header[0] = 0x75; $header[1] = 0x73; $header[2] = 0x74; $header[3] = 0x61; $header[4] = 0x72
+                  [System.IO.File]::WriteAllBytes($filePath, $header)
+                  echo "✅ Stub básico criado como último fallback"
+                }
+              }
+              Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
             }
           }
           
