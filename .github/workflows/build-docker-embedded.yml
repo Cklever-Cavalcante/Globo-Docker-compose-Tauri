@@ -181,6 +181,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: Globo-Front-main/package-lock.json
 
+      - name: Prepare Windows environment
+        if: matrix.platform == 'windows-latest'
+        run: |
+          # Limpar cache do WiX se existir
+          Remove-Item -Path "C:\Users\runneradmin\AppData\Local\tauri\WixTools*" -Recurse -Force -ErrorAction SilentlyContinue
+          # Verificar espaço em disco
+          Get-PSDrive -PSProvider FileSystem
+          
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
@@ -305,8 +313,8 @@ jobs:
           prerelease: false
           args: --config tauri-macos.conf.json
 
-      - name: Build Tauri app with embedded Docker (Windows/Linux)
-        if: matrix.platform != 'macos-latest'
+      - name: Build Tauri app with embedded Docker (Linux)
+        if: matrix.platform == 'ubuntu-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -317,6 +325,20 @@ jobs:
           releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
           releaseDraft: true
           prerelease: false
+
+      - name: Build Tauri app with embedded Docker (Windows - NSIS)
+        if: matrix.platform == 'windows-latest'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: Globo-Front-main/src-tauri
+          tagName: ${{ github.ref_name }}-docker-embedded
+          releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
+          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
+          releaseDraft: true
+          prerelease: false
+          args: --bundles nsis
 
       - name: Upload embedded artifacts
         if: startsWith(github.ref, 'refs/tags/') == false
