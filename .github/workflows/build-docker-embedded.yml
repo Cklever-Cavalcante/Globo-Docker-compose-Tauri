@@ -19,6 +19,21 @@ jobs:
   build-docker-images:
     runs-on: ubuntu-latest
     steps:
+      - name: Free up disk space (Ubuntu)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          # Limpeza agressiva de espaço em disco
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf /opt/hostedtoolcache
+          sudo docker system prune -af
+          sudo apt-get clean
+          sudo rm -rf /var/lib/apt/lists/*
+          echo "Espaço após limpeza inicial:"
+          df -h
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -58,7 +73,7 @@ jobs:
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
 
-    runs-on: ${{ matrix.platform }}
+    runs-on: ${{ matrix.platform == 'ubuntu-latest' && 'ubuntu-latest-8-cores' || matrix.platform }}
     
     steps:
       - name: Checkout repository
@@ -175,7 +190,8 @@ jobs:
           # Verificar se os pacotes já estão instalados antes de instalar
           brew list pkg-config || brew install pkg-config
           brew list glib || brew install glib
-          brew list gtk+3 || brew install gtk+3
+          # gtk+3 não é necessário para Tauri no macOS - usar gtk4 se precisar
+          # brew list gtk4 || brew install gtk4
 
       - name: Install system dependencies (Ubuntu)
         if: matrix.platform == 'ubuntu-latest'
@@ -250,7 +266,8 @@ jobs:
             Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
           }
           
-      - name: Ensure scripts exist
+      - name: Ensure scripts exist (Unix)
+        if: matrix.platform != 'windows-latest'
         working-directory: Globo-Front-main/src-tauri
         run: |
           # Garantir que os scripts existam antes do build
@@ -263,6 +280,16 @@ jobs:
             echo '# Docker setup script for Unix' >> scripts/setup-docker.sh
             chmod +x scripts/setup-docker.sh
           fi
+          
+      - name: Ensure scripts exist (Windows)
+        if: matrix.platform == 'windows-latest'
+        working-directory: Globo-Front-main/src-tauri
+        run: |
+          # Garantir que os scripts existam antes do build
+          New-Item -ItemType Directory -Force -Path "scripts"
+          if (!(Test-Path "scripts/setup-docker.ps1")) {
+            '# Docker setup script for Windows' | Out-File -FilePath "scripts/setup-docker.ps1" -Encoding UTF8
+          }
 
       - name: Build Tauri app with embedded Docker (macOS)
         if: matrix.platform == 'macos-latest'
