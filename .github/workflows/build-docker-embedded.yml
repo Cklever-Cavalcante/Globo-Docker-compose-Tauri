@@ -159,28 +159,83 @@ jobs:
                 $dummyContent = "# Stub Docker Image - $file`n# Este é um arquivo placeholder`n# A imagem real será baixada na primeira execução"
                 Set-Content -Path "$tempDir\README.txt" -Value $dummyContent
                 
-                # Criar tar válido usando tar do Git ou PowerShell
+                # Criar tar válido usando múltiplas estratégias
                 try {
-                  # Tentar usar tar (disponível no GitHub Actions)
-                  tar -cf $filePath -C $tempDir .
-                  echo "✅ Stub .tar válido criado com tar"
+                  # Estratégia 1: Usar tar nativo com formato POSIX padrão
+                  echo "Tentando criar tar com tar nativo..."
+                  tar --format=posix -cf $filePath -C $tempDir .
+                  echo "✅ Stub .tar POSIX criado com tar nativo"
                 } catch {
-                  # Fallback: criar tar manualmente com PowerShell
                   try {
-                    # Usar Compress-Archive e renomear (funciona mas não é tar puro)
-                    Compress-Archive -Path "$tempDir\*" -DestinationPath "$tempDir.zip" -Force
-                    Move-Item -Path "$tempDir.zip" -Destination $filePath -Force
-                    echo "✅ Stub .zip renomeado para .tar como fallback"
+                    # Estratégia 2: Usar 7zip se disponível (mais confiável)
+                    echo "Tentando criar tar com 7z..."
+                    7z a -ttar $filePath "$tempDir\*"
+                    echo "✅ Stub .tar criado com 7z"
                   } catch {
-                    # Último fallback: arquivo pequeno com header tar-like
-                    $header = [byte[]]::new(512)  # Header tar de 512 bytes
-                    $header[0] = 0x75  # 'u'
-                    $header[1] = 0x73  # 's'
-                    $header[2] = 0x74  # 't'
-                    $header[3] = 0x61  # 'a'
-                    $header[4] = 0x72  # 'r'
-                    [System.IO.File]::WriteAllBytes($filePath, $header)
-                    echo "✅ Stub básico criado como último fallback"
+                    try {
+                      # Estratégia 3: Criar tar manualmente válido
+                      echo "Criando tar manualmente válido..."
+                      
+                      # Estrutura básica de um arquivo TAR válido
+                      $tarContent = @()
+                      
+                      # Header para README.txt (512 bytes)
+                      $fileName = "README.txt"
+                      $fileContent = [System.Text.Encoding]::UTF8.GetBytes($dummyContent)
+                      $fileSize = $fileContent.Length
+                      
+                      # Criar header TAR válido
+                      $header = [byte[]]::new(512)
+                      [System.Text.Encoding]::UTF8.GetBytes($fileName.PadRight(100, ' ')).CopyTo($header, 0)  # nome (100 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes("0000644").CopyTo($header, 100)  # mode (8 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 108)  # uid (8 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 116)  # gid (8 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes($fileSize.ToString().PadLeft(11, '0') + " ").CopyTo($header, 124)  # size (12 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes("00000000000").CopyTo($header, 136)  # mtime (12 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes("        ").CopyTo($header, 148)  # checksum (8 bytes)
+                      $header[156] = 0x30  # typeflag (normal file)
+                      [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($header, 257)  # magic (6 bytes)
+                      [System.Text.Encoding]::UTF8.GetBytes("00").CopyTo($header, 263)  # version (2 bytes)
+                      
+                      # Calcular checksum
+                      $checksum = 0
+                      for ($i = 0; $i -lt 512; $i++) {
+                        $checksum += $header[$i]
+                      }
+                      [System.Text.Encoding]::UTF8.GetBytes($checksum.ToString().PadLeft(6, '0') + " \0").CopyTo($header, 148)
+                      
+                      $tarContent += $header
+                      $tarContent += $fileContent
+                      
+                      # Padding para múltiplo de 512 bytes
+                      $paddingSize = 512 - ($fileContent.Length % 512)
+                      if ($paddingSize -ne 512) {
+                        $tarContent += [byte[]]::new($paddingSize)
+                      }
+                      
+                      # Finalizar com 2 blocos de 512 bytes zeros (EOF)
+                      $tarContent += [byte[]]::new(1024)
+                      
+                      # Escrever arquivo TAR válido
+                      $finalBytes = [byte[]]::new(0)
+                      foreach ($bytes in $tarContent) {
+                        if ($bytes -is [byte[]]) {
+                          $newBytes = [byte[]]::new($finalBytes.Length + $bytes.Length)
+                          [System.Array]::Copy($finalBytes, 0, $newBytes, 0, $finalBytes.Length)
+                          [System.Array]::Copy($bytes, 0, $newBytes, $finalBytes.Length, $bytes.Length)
+                          $finalBytes = $newBytes
+                        }
+                      }
+                      [System.IO.File]::WriteAllBytes($filePath, $finalBytes)
+                      echo "✅ Stub .tar válido criado manualmente"
+                    } catch {
+                      # Último recurso: arquivo pequeno mas com header TAR reconhecível
+                      echo "Criando stub mínimo como último recurso..."
+                      $minimalTar = [byte[]]::new(2048)  # 2 blocos de 512 bytes + 2 blocos EOF
+                      [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($minimalTar, 257)
+                      [System.IO.File]::WriteAllBytes($filePath, $minimalTar)
+                      echo "✅ Stub mínimo criado"
+                    }
                   }
                 }
                 
@@ -199,13 +254,70 @@ jobs:
               Set-Content -Path "$tempDir\README.txt" -Value $dummyContent
               
               try {
-                tar -cf $filePath -C $tempDir .
-                echo "✅ Stub .tar válido criado com tar"
+                tar --format=posix -cf $filePath -C $tempDir .
+                echo "✅ Stub .tar POSIX criado com tar nativo"
               } catch {
                 try {
-                  Compress-Archive -Path "$tempDir\*" -DestinationPath "$tempDir.zip" -Force
-                  Move-Item -Path "$tempDir.zip" -Destination $filePath -Force
-                  echo "✅ Stub .zip renomeado para .tar como fallback"
+                  7z a -ttar $filePath "$tempDir\*"
+                  echo "✅ Stub .tar criado com 7z"
+                } catch {
+                  try {
+                    # Criar tar manualmente válido (mesma lógica detalhada)
+                    echo "Criando tar manualmente válido..."
+                    
+                    $tarContent = @()
+                    $fileName = "README.txt"
+                    $fileContent = [System.Text.Encoding]::UTF8.GetBytes($dummyContent)
+                    $fileSize = $fileContent.Length
+                    
+                    $header = [byte[]]::new(512)
+                    [System.Text.Encoding]::UTF8.GetBytes($fileName.PadRight(100, ' ')).CopyTo($header, 0)
+                    [System.Text.Encoding]::UTF8.GetBytes("0000644").CopyTo($header, 100)
+                    [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 108)
+                    [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 116)
+                    [System.Text.Encoding]::UTF8.GetBytes($fileSize.ToString().PadLeft(11, '0') + " ").CopyTo($header, 124)
+                    [System.Text.Encoding]::UTF8.GetBytes("00000000000").CopyTo($header, 136)
+                    [System.Text.Encoding]::UTF8.GetBytes("        ").CopyTo($header, 148)
+                    $header[156] = 0x30
+                    [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($header, 257)
+                    [System.Text.Encoding]::UTF8.GetBytes("00").CopyTo($header, 263)
+                    
+                    $checksum = 0
+                    for ($i = 0; $i -lt 512; $i++) {
+                      $checksum += $header[$i]
+                    }
+                    [System.Text.Encoding]::UTF8.GetBytes($checksum.ToString().PadLeft(6, '0') + " \0").CopyTo($header, 148)
+                    
+                    $tarContent += $header
+                    $tarContent += $fileContent
+                    
+                    $paddingSize = 512 - ($fileContent.Length % 512)
+                    if ($paddingSize -ne 512) {
+                      $tarContent += [byte[]]::new($paddingSize)
+                    }
+                    
+                    $tarContent += [byte[]]::new(1024)
+                    
+                    $finalBytes = [byte[]]::new(0)
+                     foreach ($bytes in $tarContent) {
+                       if ($bytes -is [byte[]]) {
+                         $newBytes = [byte[]]::new($finalBytes.Length + $bytes.Length)
+                         [System.Array]::Copy($finalBytes, 0, $newBytes, 0, $finalBytes.Length)
+                         [System.Array]::Copy($bytes, 0, $newBytes, $finalBytes.Length, $bytes.Length)
+                         $finalBytes = $newBytes
+                       }
+                     }
+                     [System.IO.File]::WriteAllBytes($filePath, $finalBytes)
+                    echo "✅ Stub .tar válido criado manualmente"
+                  } catch {
+                    echo "Criando stub mínimo como último recurso..."
+                    $minimalTar = [byte[]]::new(2048)
+                    [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($minimalTar, 257)
+                    [System.IO.File]::WriteAllBytes($filePath, $minimalTar)
+                    echo "✅ Stub mínimo criado"
+                  }
+                }
+              }
                 } catch {
                   $header = [byte[]]::new(512)
                   $header[0] = 0x75; $header[1] = 0x73; $header[2] = 0x74; $header[3] = 0x61; $header[4] = 0x72
