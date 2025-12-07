@@ -71,7 +71,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, macos-latest, ubuntu-latest]
+        platform: [windows-latest, macos-latest]
+        # Linux removido - será construído localmente devido a problemas de espaço em disco
 
     runs-on: ${{ matrix.platform }}
     
@@ -269,10 +270,9 @@ jobs:
       - name: Prepare Windows environment
         if: matrix.platform == 'windows-latest'
         run: |
-          # Limpar cache do WiX se existir
-          Remove-Item -Path "C:\Users\runneradmin\AppData\Local\tauri\WixTools*" -Recurse -Force -ErrorAction SilentlyContinue
-          # Verificar espaço em disco
+          # Verificar espaço em disco (sem limpar WiX - isso causa erros)
           Get-PSDrive -PSProvider FileSystem
+          echo "Ambiente Windows preparado para build NSIS"
           
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -503,10 +503,8 @@ jobs:
           releaseDraft: true
           prerelease: false
 
-      - name: Build Tauri app with embedded Docker (Windows - NSIS)
+      - name: Build Tauri app with embedded Docker (Windows - NSIS apenas)
         if: matrix.platform == 'windows-latest'
-        id: build-windows-nsis
-        continue-on-error: true  # Permitir falha para fallback
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -514,24 +512,10 @@ jobs:
           projectPath: Globo-Front-main/src-tauri
           tagName: ${{ github.ref_name }}-docker-embedded
           releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
-          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
+          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador (NSIS).'
           releaseDraft: true
           prerelease: false
-          args: --bundles nsis
-
-      - name: Build Tauri app with embedded Docker (Windows - WiX Fallback)
-        if: matrix.platform == 'windows-latest' && steps.build-windows-nsis.outcome == 'failure'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: Globo-Front-main/src-tauri
-          tagName: ${{ github.ref_name }}-docker-embedded
-          releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
-          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador (WiX).'
-          releaseDraft: true
-          prerelease: false
-          args: --bundles msi
+          args: --bundles nsis  # NSIS apenas - WiX removido devido a erros com arquivos grandes
 
       - name: Upload embedded artifacts
         if: startsWith(github.ref, 'refs/tags/') == false
