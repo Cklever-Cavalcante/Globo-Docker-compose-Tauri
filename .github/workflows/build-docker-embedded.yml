@@ -95,26 +95,39 @@ jobs:
       - name: Install Docker Engine (Ubuntu)
         if: matrix.platform == 'ubuntu-latest'
         run: |
+          # Remover versões antigas e conflitantes primeiro
+          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
           sudo apt-get update
-          sudo apt-get install -y docker.io docker-compose
+          # Instalar Docker usando o repositório oficial
+          sudo apt-get install -y \
+            ca-certificates \
+            curl \
+            gnupg \
+            lsb-release
+          sudo mkdir -p /etc/apt/keyrings
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+          echo \
+            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
           sudo systemctl enable docker
           sudo systemctl start docker
           sudo usermod -aG docker $USER
           # Verificar instalação
           docker version
-          docker-compose version || docker compose version
+          docker compose version || docker-compose version
 
       - name: Install Docker Engine (Windows)
         if: matrix.platform == 'windows-latest'
         run: |
-          # Instalar Docker Engine via Docker CE
-          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
-          Install-Module -Name DockerMsftProvider -Force
-          Install-Package -Name docker -ProviderName DockerMsftProvider -Force
-          Start-Service docker
-          # Verificar instalação
+          # Usar Docker que já vem instalado no runner do GitHub Actions
+          # O Windows runner já tem Docker Desktop pré-instalado
+          echo "Verificando Docker no Windows runner..."
           docker version
-          docker compose version || docker-compose version
+          # Verificar se docker-compose está disponível
+          docker-compose version || echo "docker-compose não encontrado, tentando docker compose..."
+          docker compose version || echo "Docker Compose não disponível"
 
       - name: Install Docker Engine (macOS)
         if: matrix.platform == 'macos-latest'
@@ -243,12 +256,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: Globo-Front-main/src-tauri
-          configPath: tauri-macos.conf.json
           tagName: ${{ github.ref_name }}-docker-embedded
           releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
           releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
           releaseDraft: true
           prerelease: false
+          args: --config tauri-macos.conf.json
 
       - name: Build Tauri app with embedded Docker (Windows/Linux)
         if: matrix.platform != 'macos-latest'
@@ -275,6 +288,8 @@ jobs:
             Globo-Front-main/src-tauri/target/release/bundle/deb/*.deb
             Globo-Front-main/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: ignore
+          compression-level: 6
+          retention-days: 30
 
   create-release:
     needs: build-tauri-embedded
