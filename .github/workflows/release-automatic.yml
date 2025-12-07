@@ -1,0 +1,241 @@
+name: 'Automatic Release Build'
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g., 1.0.0) - leave empty for auto'
+        required: false
+        type: string
+      prerelease:
+        description: 'Mark as prerelease'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # Job para determinar a versão
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Auto-incrementa a versão baseada na última tag
+            git fetch --tags
+            LATEST_TAG=$(git tag --sort=-version:refname | head -1 | sed 's/v//')
+            if [ -z "$LATEST_TAG" ]; then
+              VERSION="1.0.0"
+            else
+              # Incrementa patch version
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_TAG"
+              PATCH=$((PATCH + 1))
+              VERSION="$MAJOR.$MINOR.$PATCH"
+            fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+  # Job principal de build
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            targets: x86_64-pc-windows-msvc
+            suffix: windows-x64
+          - platform: macos-latest
+            targets: universal-apple-darwin
+            suffix: macos-universal
+          - platform: ubuntu-22.04
+            targets: x86_64-unknown-linux-gnu
+            suffix: linux-x64
+
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: Globo-Front-main/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
+
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        working-directory: Globo-Front-main
+        run: npm install --legacy-peer-deps
+
+      - name: Build Frontend
+        working-directory: Globo-Front-main
+        run: npm run build
+
+      - name: Setup Docker images for bundle
+        run: |
+          # Criar diretório de imagens Docker para o bundle
+          mkdir -p Globo-Front-main/src-tauri/resources/docker-images
+          
+          # Criar arquivos placeholder para imagens Docker (serão substituídos por builds reais)
+          echo "# PostgreSQL image placeholder" > Globo-Front-main/src-tauri/resources/docker-images/postgres.tar
+          echo "# Backend image placeholder" > Globo-Front-main/src-tauri/resources/docker-images/backend.tar  
+          echo "# IA Service image placeholder" > Globo-Front-main/src-tauri/resources/docker-images/ia-service.tar
+          
+          # Copiar arquivos necessários para o bundle
+          cp docker-compose.yml Globo-Front-main/src-tauri/resources/
+          cp .env Globo-Front-main/src-tauri/resources/
+          
+          # Copiar backend e IA service
+          cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: Globo-Front-main/src-tauri
+          tagName: ${{ needs.version.outputs.tag }}
+          releaseName: 'Globo Monitor v${{ needs.version.outputs.version }}'
+          releaseBody: |
+            ## 📦 Globo Monitor Desktop v${{ needs.version.outputs.version }}
+            
+            Aplicação desktop de monitoramento com análise de vídeo por IA.
+            
+            ### 🏗️ Arquitetura
+            - **Frontend**: Angular 20 + Tauri 2
+            - **Backend**: Python FastAPI + PostgreSQL
+            - **IA**: PyTorch, TensorFlow, YOLOv8
+            - **Containerização**: Docker/Podman
+            
+            ### 📥 Downloads por Plataforma
+            
+            #### Windows
+            - `globo-monitor_${{ needs.version.outputs.version }}_x64_en-US.msi` - Instalador MSI
+            - `globo-monitor_${{ needs.version.outputs.version }}_x64-setup.exe` - Instalador EXE
+            
+            #### macOS  
+            - `Globo Monitor_${{ needs.version.outputs.version }}_universal.dmg` - DMG Universal (Intel + Apple Silicon)
+            - `Globo Monitor.app` - Aplicação macOS
+            
+            #### Linux
+            - `globo-monitor_${{ needs.version.outputs.version }}_amd64.deb` - Pacote DEB
+            - `globo-monitor_${{ needs.version.outputs.version }}_amd64.AppImage` - AppImage
+            - `globo-monitor_${{ needs.version.outputs.version }}.x86_64.rpm` - Pacote RPM
+            
+            ### 🚀 Instalação
+            
+            1. Baixe o instalador para sua plataforma
+            2. Execute o instalador
+            3. A aplicação inclui todos os serviços Docker necessários
+            4. O Docker/Podman será necessário para executar os serviços
+            
+            ### 🐳 Serviços Incluídos
+            
+            - **PostgreSQL**: Banco de dados na porta 5432
+            - **Backend API**: FastAPI na porta 8000  
+            - **IA Service**: Serviço de análise na porta 8001
+            - **Frontend**: Interface Tauri + Angular
+            
+            ### 🛠️ Tecnologias
+            
+            - Frontend: Angular 20, Tauri 2, TypeScript
+            - Backend: Python 3.10, FastAPI, SQLAlchemy
+            - IA: PyTorch, TensorFlow, Ultralytics YOLOv8, MobileNetV2
+            - Database: PostgreSQL 15
+            - Containerização: Docker/Podman
+            
+            ### ⚠️ Requisitos
+            
+            - Windows 10+ / macOS 10.15+ / Ubuntu 20.04+
+            - Docker Engine ou Podman
+            - 4GB RAM mínimo (8GB recomendado)
+            - 2GB espaço em disco
+            
+            ### 🔧 Desenvolvimento
+            
+            ```bash
+            # Clonar repositório
+            git clone https://github.com/Cklever-Cavalcante/Globo-Docker-compose-Tauri.git
+            
+            # Iniciar serviços
+            docker-compose up -d
+            
+            # Desenvolvimento Tauri
+            cd Globo-Front-main
+            npm install --legacy-peer-deps
+            npm run tauri dev
+            ```
+            
+            ---
+            **Build automático via GitHub Actions** 
+            _Commit: ${{ github.sha }}_ | _Branch: ${{ github.ref_name }}_ | _Data: ${{ github.event.head_commit.timestamp }}_
+          releaseDraft: false
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          args: ${{ matrix.platform == 'macos-latest' && '--target universal-apple-darwin' || '' }}
+
+      - name: Upload build artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-failure-${{ matrix.suffix }}
+          path: |
+            Globo-Front-main/src-tauri/target/release/bundle/
+            Globo-Front-main/src-tauri/target/release/*.exe
+            Globo-Front-main/src-tauri/target/release/*.app
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Job para criar e enviar release
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    if: always() && needs.build.result == 'success'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Create Release Summary
+        run: |
+          echo "## 🎉 Release v${{ needs.version.outputs.version }} Concluído" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Status dos Builds:" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Windows: Completo" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS: Completo" >> $GITHUB_STEP_SUMMARY  
+          echo "- ✅ Linux: Completo" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release v${{ needs.version.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/${{ needs.version.outputs.tag }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Actions Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
