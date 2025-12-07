@@ -1,8 +1,19 @@
-# 🐧 GUIA COMPLETO: Build de Bundle Completo no Linux Mint
+# 🐧 GUIA COMPLETO: Build de Bundle Completo (Linux/Mac/Windows)
 
 ## 📋 Visão Geral
 
-Este guia detalha **todo o processo necessário** para gerar builds de bundles completos no Linux Mint, incluindo:
+Este guia detalha **todo o processo necessário** para gerar builds de bundles completos em diferentes plataformas:
+
+### 🐧 Linux Mint (Ubuntu/Debian)
+### 🍎 macOS (Intel/Apple Silicon)  
+### 🪟 Windows 10/11
+
+**Cada plataforma tem seu script de preparação:**
+- `prepara-bundle-linux.sh` - Para Linux Mint/Ubuntu
+- `prepara-bundle-macos.sh` - Para macOS
+- `prepara-bundle-windows.ps1` - Para Windows PowerShell
+
+Incluindo todos os componentes:
 - Frontend Angular + Tauri
 - Backend Python FastAPI 
 - Serviço de IA Python
@@ -31,7 +42,48 @@ Bundle Completo:
 
 ## 🔄 Processo Completo Passo a Passo
 
-### 1. Preparação do Ambiente Linux Mint
+### 📋 **OPÇÃO 1: Script Automatizado (RECOMENDADO)**
+
+**Para Linux:**
+```bash
+# Tornar o script executável
+chmod +x prepara-bundle-linux.sh
+
+# Executar o script de preparação
+./prepara-bundle-linux.sh
+
+# O script fará tudo automaticamente:
+# - Verificar dependências
+# - Criar estrutura de diretórios
+# - Copiar arquivos
+# - Buildar e exportar imagens Docker
+# - Verificar tudo
+```
+
+**Para macOS:**
+```bash
+# Tornar o script executável
+chmod +x prepara-bundle-macos.sh
+
+# Executar o script de preparação
+./prepara-bundle-macos.sh
+
+# O script fará tudo automaticamente com logs coloridos
+```
+
+**Para Windows:**
+```powershell
+# Executar o script PowerShell
+.\prepara-bundle-windows.ps1
+
+# O script preparará todos os recursos automaticamente
+```
+
+### 🔧 **OPÇÃO 2: Processo Manual Detalhado**
+
+### 1. Preparação do Ambiente
+
+#### 🐧 **Linux Mint / Ubuntu / Debian**
 
 ```bash
 # Atualizar sistema
@@ -48,7 +100,65 @@ sudo apt install -y \
     libwebkit2gtk-4.1-dev \
     libappindicator3-dev \
     librsvg2-dev \
-    patchelf \
+    patchelf
+
+# Instalar Node.js 20+
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Instalar Docker
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker $USER
+# ⚠️ RELOGIN NECESSÁRIO APÓS ADD DOCKER GROUP
+
+# Instalar Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+#### 🍎 **macOS (Intel / Apple Silicon)**
+
+```bash
+# Instalar Homebrew (se não tiver)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Instalar Node.js 20+
+brew install node@20
+brew link node@20
+
+# Instalar Docker Desktop
+# Baixe em: https://www.docker.com/products/docker-desktop
+# Ou via Homebrew Cask:
+brew install --cask docker
+# ⚠️ INICIAR DOCKER DESKTOP MANUALMENTE APÓS INSTALAÇÃO
+
+# Instalar Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+
+# Instalar dependências adicionais (opcional, mas recomendado)
+brew install git
+```
+
+#### 🪟 **Windows 10/11**
+
+```powershell
+# Instalar Node.js 20+
+# Baixe em: https://nodejs.org/
+# Ou via winget:
+winget install OpenJS.NodeJS.20
+
+# Instalar Docker Desktop
+# Baixe em: https://www.docker.com/products/docker-desktop
+# Ou via winget:
+winget install Docker.DockerDesktop
+# ⚠️ INICIAR DOCKER DESKTOP MANUALMENTE APÓS INSTALAÇÃO
+
+# Instalar Rust
+# Baixe em: https://rustup.rs/
+# Ou via winget:
+winget install Rustlang.Rustup
+``` \
     librust-openssl-dev
 
 # Instalar Node.js 20.x
