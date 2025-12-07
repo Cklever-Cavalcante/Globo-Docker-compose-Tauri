@@ -211,26 +211,50 @@ jobs:
         if: matrix.platform == 'windows-latest'
         working-directory: Globo-Front-main/src-tauri
         run: |
-          # Criar arquivos placeholder se não existirem
+          # Criar arquivos placeholder apenas se não existirem (preservar arquivos baixados)
           if (!(Test-Path "resources/docker-images/postgres.tar")) {
+            Write-Host "Criando placeholder postgres.tar"
             New-Item -ItemType File -Path "resources/docker-images/postgres.tar" -Force
+          } else {
+            Write-Host "postgres.tar já existe (preservando arquivo baixado)"
           }
           if (!(Test-Path "resources/docker-images/backend.tar")) {
+            Write-Host "Criando placeholder backend.tar"
             New-Item -ItemType File -Path "resources/docker-images/backend.tar" -Force
+          } else {
+            Write-Host "backend.tar já existe (preservando arquivo baixado)"
           }
           if (!(Test-Path "resources/docker-images/ia-service.tar")) {
+            Write-Host "Criando placeholder ia-service.tar"
             New-Item -ItemType File -Path "resources/docker-images/ia-service.tar" -Force
+          } else {
+            Write-Host "ia-service.tar já existe (preservando arquivo baixado)"
           }
 
       - name: Ensure all resource files exist (Unix)
         if: matrix.platform != 'windows-latest'
         working-directory: Globo-Front-main/src-tauri
         run: |
-          # Criar arquivos placeholder se não existirem
+          # Criar arquivos placeholder apenas se não existirem (preservar arquivos baixados)
           mkdir -p resources/docker-images
-          touch resources/docker-images/postgres.tar
-          touch resources/docker-images/backend.tar
-          touch resources/docker-images/ia-service.tar
+          if [ ! -f "resources/docker-images/postgres.tar" ]; then
+            echo "Criando placeholder postgres.tar"
+            touch resources/docker-images/postgres.tar
+          else
+            echo "postgres.tar já existe (preservando arquivo baixado)"
+          fi
+          if [ ! -f "resources/docker-images/backend.tar" ]; then
+            echo "Criando placeholder backend.tar"
+            touch resources/docker-images/backend.tar
+          else
+            echo "backend.tar já existe (preservando arquivo baixado)"
+          fi
+          if [ ! -f "resources/docker-images/ia-service.tar" ]; then
+            echo "Criando placeholder ia-service.tar"
+            touch resources/docker-images/ia-service.tar
+          else
+            echo "ia-service.tar já existe (preservando arquivo baixado)"
+          fi
 
       - name: Install frontend dependencies
         working-directory: Globo-Front-main
