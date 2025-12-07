@@ -73,7 +73,7 @@ jobs:
       matrix:
         platform: [windows-latest, macos-latest, ubuntu-latest]
 
-    runs-on: ${{ matrix.platform == 'ubuntu-latest' && 'ubuntu-latest-8-cores' || matrix.platform }}
+    runs-on: ${{ matrix.platform }}
     
     steps:
       - name: Checkout repository
@@ -106,6 +106,37 @@ jobs:
         with:
           name: docker-images
           path: Globo-Front-main/src-tauri/resources/docker-images/
+
+      - name: Validate downloaded Docker images
+        if: matrix.platform != 'windows-latest'
+        run: |
+          echo "Validando arquivos de imagens Docker baixados:"
+          ls -la Globo-Front-main/src-tauri/resources/docker-images/
+          for file in Globo-Front-main/src-tauri/resources/docker-images/*.tar; do
+            if [ -f "$file" ]; then
+              size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo "0")
+              echo "$(basename "$file"): $size bytes"
+              if [ "$size" -eq 0 ]; then
+                echo "AVISO: $(basename "$file") está vazio!"
+              fi
+            else
+              echo "ARQUIVO NÃO ENCONTRADO: $file"
+            fi
+          done
+
+      - name: Validate downloaded Docker images (Windows)
+        if: matrix.platform == 'windows-latest'
+        run: |
+          echo "Validando arquivos de imagens Docker baixados:"
+          Get-ChildItem "Globo-Front-main/src-tauri/resources/docker-images/" -Name
+          Get-ChildItem "Globo-Front-main/src-tauri/resources/docker-images/*.tar" | ForEach-Object {
+            $size = $_.Length
+            $name = $_.Name
+            echo "$name : $size bytes"
+            if ($size -eq 0) {
+              echo "AVISO: $name está vazio!"
+            }
+          }
 
       - name: Clean up disk space (Ubuntu)
         if: matrix.platform == 'ubuntu-latest'
@@ -216,19 +247,37 @@ jobs:
             Write-Host "Criando placeholder postgres.tar"
             New-Item -ItemType File -Path "resources/docker-images/postgres.tar" -Force
           } else {
-            Write-Host "postgres.tar já existe (preservando arquivo baixado)"
+            $size = (Get-Item "resources/docker-images/postgres.tar").Length
+            Write-Host "postgres.tar já existe (tamanho: $size bytes)"
+            if ($size -eq 0) {
+              Write-Host "ARQUIVO VAZIO - criando placeholder substituto"
+              Remove-Item "resources/docker-images/postgres.tar" -Force
+              New-Item -ItemType File -Path "resources/docker-images/postgres.tar" -Force
+            }
           }
           if (!(Test-Path "resources/docker-images/backend.tar")) {
             Write-Host "Criando placeholder backend.tar"
             New-Item -ItemType File -Path "resources/docker-images/backend.tar" -Force
           } else {
-            Write-Host "backend.tar já existe (preservando arquivo baixado)"
+            $size = (Get-Item "resources/docker-images/backend.tar").Length
+            Write-Host "backend.tar já existe (tamanho: $size bytes)"
+            if ($size -eq 0) {
+              Write-Host "ARQUIVO VAZIO - criando placeholder substituto"
+              Remove-Item "resources/docker-images/backend.tar" -Force
+              New-Item -ItemType File -Path "resources/docker-images/backend.tar" -Force
+            }
           }
           if (!(Test-Path "resources/docker-images/ia-service.tar")) {
             Write-Host "Criando placeholder ia-service.tar"
             New-Item -ItemType File -Path "resources/docker-images/ia-service.tar" -Force
           } else {
-            Write-Host "ia-service.tar já existe (preservando arquivo baixado)"
+            $size = (Get-Item "resources/docker-images/ia-service.tar").Length
+            Write-Host "ia-service.tar já existe (tamanho: $size bytes)"
+            if ($size -eq 0) {
+              Write-Host "ARQUIVO VAZIO - criando placeholder substituto"
+              Remove-Item "resources/docker-images/ia-service.tar" -Force
+              New-Item -ItemType File -Path "resources/docker-images/ia-service.tar" -Force
+            }
           }
 
       - name: Ensure all resource files exist (Unix)
@@ -241,19 +290,37 @@ jobs:
             echo "Criando placeholder postgres.tar"
             touch resources/docker-images/postgres.tar
           else
-            echo "postgres.tar já existe (preservando arquivo baixado)"
+            size=$(stat -c%s "resources/docker-images/postgres.tar" 2>/dev/null || stat -f%z "resources/docker-images/postgres.tar" 2>/dev/null || echo "0")
+            echo "postgres.tar já existe (tamanho: $size bytes)"
+            if [ "$size" -eq 0 ]; then
+              echo "ARQUIVO VAZIO - criando placeholder substituto"
+              rm -f resources/docker-images/postgres.tar
+              touch resources/docker-images/postgres.tar
+            fi
           fi
           if [ ! -f "resources/docker-images/backend.tar" ]; then
             echo "Criando placeholder backend.tar"
             touch resources/docker-images/backend.tar
           else
-            echo "backend.tar já existe (preservando arquivo baixado)"
+            size=$(stat -c%s "resources/docker-images/backend.tar" 2>/dev/null || stat -f%z "resources/docker-images/backend.tar" 2>/dev/null || echo "0")
+            echo "backend.tar já existe (tamanho: $size bytes)"
+            if [ "$size" -eq 0 ]; then
+              echo "ARQUIVO VAZIO - criando placeholder substituto"
+              rm -f resources/docker-images/backend.tar
+              touch resources/docker-images/backend.tar
+            fi
           fi
           if [ ! -f "resources/docker-images/ia-service.tar" ]; then
             echo "Criando placeholder ia-service.tar"
             touch resources/docker-images/ia-service.tar
           else
-            echo "ia-service.tar já existe (preservando arquivo baixado)"
+            size=$(stat -c%s "resources/docker-images/ia-service.tar" 2>/dev/null || stat -f%z "resources/docker-images/ia-service.tar" 2>/dev/null || echo "0")
+            echo "ia-service.tar já existe (tamanho: $size bytes)"
+            if [ "$size" -eq 0 ]; then
+              echo "ARQUIVO VAZIO - criando placeholder substituto"
+              rm -f resources/docker-images/ia-service.tar
+              touch resources/docker-images/ia-service.tar
+            fi
           fi
 
       - name: Install frontend dependencies
