@@ -1,4 +1,4 @@
-name: 'Build Docker Embedded (Opção 1)'
+name: 'Build Docker Embedded (macOS Only)'
 
 on:
   push:
@@ -20,7 +20,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Free up disk space (Ubuntu)
-        if: matrix.platform == 'ubuntu-latest'
         run: |
           # Limpeza agressiva de espaço em disco
           sudo rm -rf /usr/share/dotnet
@@ -54,25 +53,27 @@ jobs:
       - name: Build IA Service image
         run: |
           cd residencia4-ia-main
-          docker build -t globo-ia-service:latest .
-          docker save globo-ia-service:latest -o ../ia-service.tar
+          docker build -t globo-ia:latest .
+          docker save globo-ia:latest -o ../ia-service.tar
 
       - name: Upload Docker images
         uses: actions/upload-artifact@v4
         with:
-          name: docker-images
+          name: docker-images-embedded
           path: |
             postgres.tar
             backend.tar
             ia-service.tar
+          retention-days: 1
+          compression-level: 6
 
-  build-tauri-embedded:
+  build-tauri:
     needs: build-docker-images
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, macos-latest]
-        # Linux removido - será construído localmente devido a problemas de espaço em disco
+        platform: [macos-latest]
+        # Apenas macOS - Windows e Linux serão construídos localmente
 
     runs-on: ${{ matrix.platform }}
     
@@ -80,349 +81,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy essential files to resources (Unix)
-        if: matrix.platform != 'windows-latest'
-        run: |
-          mkdir -p Globo-Front-main/src-tauri/resources
-          rm -rf Globo-Front-main/src-tauri/resources/residencia4-backend-master
-          rm -rf Globo-Front-main/src-tauri/resources/residencia4-ia-main
-          cp docker-compose.yml Globo-Front-main/src-tauri/resources/
-          cp .env Globo-Front-main/src-tauri/resources/
-          cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
-          cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
-
-      - name: Copy essential files to resources (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          New-Item -ItemType Directory -Force -Path "Globo-Front-main/src-tauri/resources"
-          Copy-Item "docker-compose.yml" -Destination "Globo-Front-main/src-tauri/resources/" -Force
-          Copy-Item ".env" -Destination "Globo-Front-main/src-tauri/resources/" -Force
-          if (Test-Path "Globo-Front-main/src-tauri/resources/residencia4-backend-master") { Remove-Item -Path "Globo-Front-main/src-tauri/resources/residencia4-backend-master" -Recurse -Force }
-          if (Test-Path "Globo-Front-main/src-tauri/resources/residencia4-ia-main") { Remove-Item -Path "Globo-Front-main/src-tauri/resources/residencia4-ia-main" -Recurse -Force }
-          Copy-Item "residencia4-backend-master" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse -Force
-          Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse -Force
-
       - name: Download Docker images
         uses: actions/download-artifact@v4
         with:
-          name: docker-images
-          path: Globo-Front-main/src-tauri/resources/docker-images/
-
-      - name: Validate downloaded Docker images
-        if: matrix.platform != 'windows-latest'
-        run: |
-          echo "Validando arquivos de imagens Docker baixados:"
-          ls -la Globo-Front-main/src-tauri/resources/docker-images/
-          for file in Globo-Front-main/src-tauri/resources/docker-images/*.tar; do
-            if [ -f "$file" ]; then
-              size=$(stat -c%s "$file" 2>/dev/null || stat -f%z "$file" 2>/dev/null || echo "0")
-              echo "$(basename "$file"): $size bytes"
-              if [ "$size" -eq 0 ]; then
-                echo "AVISO: $(basename "$file") está vazio!"
-              fi
-            else
-              echo "ARQUIVO NÃO ENCONTRADO: $file"
-            fi
-          done
-
-      - name: Validate and fix Docker images (Windows - Solução Definitiva)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          echo "=== VALIDAÇÃO DEFINITIVA DOS ARQUIVOS DOCKER PARA WINDOWS ==="
-          $dockerImagesPath = "Globo-Front-main/src-tauri/resources/docker-images"
-          
-          # Garantir que o diretório existe
-          New-Item -ItemType Directory -Force -Path $dockerImagesPath
-          
-          # Verificar cada arquivo .tar
-          $files = @("postgres.tar", "backend.tar", "ia-service.tar")
-          foreach ($file in $files) {
-            $filePath = "$dockerImagesPath/$file"
-            
-            if (Test-Path $filePath) {
-              $size = (Get-Item $filePath).Length
-              echo "$file existe (tamanho: $size bytes)"
-              
-              # Se o arquivo for muito pequeno ou vazio, é problema
-              if ($size -lt 1024) {  # Menos que 1KB é suspeito
-                echo "⚠️  $file muito pequeno - criando stub válido"
-                Remove-Item $filePath -Force
-                
-                # Criar um stub .tar válido (mínimo necessário)
-                # Criar um arquivo tar válido mas pequeno com um arquivo dummy
-                echo "Criando stub .tar válido para $file..."
-                
-                # Criar diretório temporário
-                $tempDir = New-Item -ItemType Directory -Path "temp-stub-$file" -Force
-                
-                # Criar arquivo dummy pequeno
-                $dummyContent = "# Stub Docker Image - $file`n# Este é um arquivo placeholder`n# A imagem real será baixada na primeira execução"
-                Set-Content -Path "$tempDir\README.txt" -Value $dummyContent
-                
-                # Criar tar válido usando múltiplas estratégias
-                try {
-                  # Estratégia 1: Usar tar nativo com formato POSIX padrão
-                  echo "Tentando criar tar com tar nativo..."
-                  tar --format=posix -cf $filePath -C $tempDir .
-                  echo "✅ Stub .tar POSIX criado com tar nativo"
-                } catch {
-                  try {
-                    # Estratégia 2: Usar 7zip se disponível (mais confiável)
-                    echo "Tentando criar tar com 7z..."
-                    7z a -ttar $filePath "$tempDir\*"
-                    echo "✅ Stub .tar criado com 7z"
-                  } catch {
-                    try {
-                      # Estratégia 3: Criar tar manualmente válido
-                      echo "Criando tar manualmente válido..."
-                      
-                      # Estrutura básica de um arquivo TAR válido
-                      $tarContent = @()
-                      
-                      # Header para README.txt (512 bytes)
-                      $fileName = "README.txt"
-                      $fileContent = [System.Text.Encoding]::UTF8.GetBytes($dummyContent)
-                      $fileSize = $fileContent.Length
-                      
-                      # Criar header TAR válido
-                      $header = [byte[]]::new(512)
-                      [System.Text.Encoding]::UTF8.GetBytes($fileName.PadRight(100, ' ')).CopyTo($header, 0)  # nome (100 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes("0000644").CopyTo($header, 100)  # mode (8 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 108)  # uid (8 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 116)  # gid (8 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes($fileSize.ToString().PadLeft(11, '0') + " ").CopyTo($header, 124)  # size (12 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes("00000000000").CopyTo($header, 136)  # mtime (12 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes("        ").CopyTo($header, 148)  # checksum (8 bytes)
-                      $header[156] = 0x30  # typeflag (normal file)
-                      [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($header, 257)  # magic (6 bytes)
-                      [System.Text.Encoding]::UTF8.GetBytes("00").CopyTo($header, 263)  # version (2 bytes)
-                      
-                      # Calcular checksum
-                      $checksum = 0
-                      for ($i = 0; $i -lt 512; $i++) {
-                        $checksum += $header[$i]
-                      }
-                      [System.Text.Encoding]::UTF8.GetBytes($checksum.ToString().PadLeft(6, '0') + " \0").CopyTo($header, 148)
-                      
-                      $tarContent += $header
-                      $tarContent += $fileContent
-                      
-                      # Padding para múltiplo de 512 bytes
-                      $paddingSize = 512 - ($fileContent.Length % 512)
-                      if ($paddingSize -ne 512) {
-                        $tarContent += [byte[]]::new($paddingSize)
-                      }
-                      
-                      # Finalizar com 2 blocos de 512 bytes zeros (EOF)
-                      $tarContent += [byte[]]::new(1024)
-                      
-                      # Escrever arquivo TAR válido
-                      $finalBytes = [byte[]]::new(0)
-                      foreach ($bytes in $tarContent) {
-                        if ($bytes -is [byte[]]) {
-                          $newBytes = [byte[]]::new($finalBytes.Length + $bytes.Length)
-                          [System.Array]::Copy($finalBytes, 0, $newBytes, 0, $finalBytes.Length)
-                          [System.Array]::Copy($bytes, 0, $newBytes, $finalBytes.Length, $bytes.Length)
-                          $finalBytes = $newBytes
-                        }
-                      }
-                      [System.IO.File]::WriteAllBytes($filePath, $finalBytes)
-                      echo "✅ Stub .tar válido criado manualmente"
-                    } catch {
-                      # Último recurso: arquivo pequeno mas com header TAR reconhecível
-                      echo "Criando stub mínimo como último recurso..."
-                      $minimalTar = [byte[]]::new(2048)  # 2 blocos de 512 bytes + 2 blocos EOF
-                      [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($minimalTar, 257)
-                      [System.IO.File]::WriteAllBytes($filePath, $minimalTar)
-                      echo "✅ Stub mínimo criado"
-                    }
-                  }
-                }
-                
-                # Limpar temporários
-                Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-              } else {
-                echo "✅ $file parece válido"
-              }
-            } else {
-              echo "⚠️  $file não encontrado - criando stub"
-              # Criar stub se arquivo não existe (mesma lógica acima)
-              echo "Criando stub .tar válido para $file..."
-              
-              $tempDir = New-Item -ItemType Directory -Path "temp-stub-$file" -Force
-              $dummyContent = "# Stub Docker Image - $file`n# Este é um arquivo placeholder`n# A imagem real será baixada na primeira execução"
-              Set-Content -Path "$tempDir\README.txt" -Value $dummyContent
-              
-              try {
-                tar --format=posix -cf $filePath -C $tempDir .
-                echo "✅ Stub .tar POSIX criado com tar nativo"
-              } catch {
-                try {
-                  7z a -ttar $filePath "$tempDir\*"
-                  echo "✅ Stub .tar criado com 7z"
-                } catch {
-                  try {
-                    # Criar tar manualmente válido (mesma lógica detalhada)
-                    echo "Criando tar manualmente válido..."
-                    
-                    $tarContent = @()
-                    $fileName = "README.txt"
-                    $fileContent = [System.Text.Encoding]::UTF8.GetBytes($dummyContent)
-                    $fileSize = $fileContent.Length
-                    
-                    $header = [byte[]]::new(512)
-                    [System.Text.Encoding]::UTF8.GetBytes($fileName.PadRight(100, ' ')).CopyTo($header, 0)
-                    [System.Text.Encoding]::UTF8.GetBytes("0000644").CopyTo($header, 100)
-                    [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 108)
-                    [System.Text.Encoding]::UTF8.GetBytes("0000000").CopyTo($header, 116)
-                    [System.Text.Encoding]::UTF8.GetBytes($fileSize.ToString().PadLeft(11, '0') + " ").CopyTo($header, 124)
-                    [System.Text.Encoding]::UTF8.GetBytes("00000000000").CopyTo($header, 136)
-                    [System.Text.Encoding]::UTF8.GetBytes("        ").CopyTo($header, 148)
-                    $header[156] = 0x30
-                    [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($header, 257)
-                    [System.Text.Encoding]::UTF8.GetBytes("00").CopyTo($header, 263)
-                    
-                    $checksum = 0
-                    for ($i = 0; $i -lt 512; $i++) {
-                      $checksum += $header[$i]
-                    }
-                    [System.Text.Encoding]::UTF8.GetBytes($checksum.ToString().PadLeft(6, '0') + " \0").CopyTo($header, 148)
-                    
-                    $tarContent += $header
-                    $tarContent += $fileContent
-                    
-                    $paddingSize = 512 - ($fileContent.Length % 512)
-                    if ($paddingSize -ne 512) {
-                      $tarContent += [byte[]]::new($paddingSize)
-                    }
-                    
-                    $tarContent += [byte[]]::new(1024)
-                    
-                    $finalBytes = [byte[]]::new(0)
-                     foreach ($bytes in $tarContent) {
-                       if ($bytes -is [byte[]]) {
-                         $newBytes = [byte[]]::new($finalBytes.Length + $bytes.Length)
-                         [System.Array]::Copy($finalBytes, 0, $newBytes, 0, $finalBytes.Length)
-                         [System.Array]::Copy($bytes, 0, $newBytes, $finalBytes.Length, $bytes.Length)
-                         $finalBytes = $newBytes
-                       }
-                     }
-                     [System.IO.File]::WriteAllBytes($filePath, $finalBytes)
-                    echo "✅ Stub .tar válido criado manualmente"
-                  } catch {
-                    echo "Criando stub mínimo como último recurso..."
-                    $minimalTar = [byte[]]::new(2048)
-                    [System.Text.Encoding]::UTF8.GetBytes("ustar").CopyTo($minimalTar, 257)
-                    [System.IO.File]::WriteAllBytes($filePath, $minimalTar)
-                    echo "✅ Stub mínimo criado"
-                  }
-                }
-              }
-                } catch {
-                  $header = [byte[]]::new(512)
-                  $header[0] = 0x75; $header[1] = 0x73; $header[2] = 0x74; $header[3] = 0x61; $header[4] = 0x72
-                  [System.IO.File]::WriteAllBytes($filePath, $header)
-                  echo "✅ Stub básico criado como último fallback"
-                }
-              }
-              Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
-            }
-          }
-          
-          echo "=== VERIFICAÇÃO FINAL ==="
-          Get-ChildItem $dockerImagesPath -Name | ForEach-Object {
-            $size = (Get-Item "$dockerImagesPath/$_").Length
-            echo "$_ : $size bytes"
-          }
-
-      - name: Clean up disk space (Ubuntu - Limpeza Agressiva)
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          # Limpeza agressiva de espaço em disco - removendo componentes grandes
-          echo "Espaço antes da limpeza:"
-          df -h
-          
-          # Remover componentes desnecessários que consomem muito espaço
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          sudo rm -rf /opt/hostedtoolcache
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/google/chrome
-          sudo rm -rf /opt/microsoft/msedge
-          sudo rm -rf /opt/firefox
-          
-          # Limpar caches e temporários
-          sudo apt-get clean
-          sudo apt-get autoremove -y
-          sudo rm -rf /var/lib/apt/lists/*
-          sudo rm -rf /tmp/*
-          sudo rm -rf /var/tmp/*
-          sudo rm -rf /var/cache/apt/archives/*
-          sudo rm -rf /var/log/*
-          
-          # Docker cleanup agressivo
-          docker system prune -af --volumes || true
-          
-          echo "Espaço após limpeza agressiva:"
-          df -h
-          df -h
-
-      - name: Install Docker Engine (Ubuntu)
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          # Remover versões antigas e conflitantes primeiro
-          sudo apt-get remove -y docker docker-engine docker.io containerd runc || true
-          sudo apt-get update
-          # Instalar Docker usando o repositório oficial
-          sudo apt-get install -y --no-install-recommends \
-            ca-certificates \
-            curl \
-            gnupg \
-            lsb-release
-          sudo mkdir -p /etc/apt/keyrings
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-          echo \
-            "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-            $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io docker-compose-plugin
-          sudo systemctl enable docker
-          sudo systemctl start docker
-          sudo usermod -aG docker $USER
-          # Verificar instalação
-          docker version
-          docker compose version || docker-compose version
-
-      - name: Install Docker Engine (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          # Usar Docker que já vem instalado no runner do GitHub Actions
-          # O Windows runner já tem Docker Desktop pré-instalado
-          echo "Verificando Docker no Windows runner..."
-          docker version
-          # Verificar se docker compose está disponível (v2)
-          docker compose version || echo "docker compose não encontrado"
-          docker compose version || echo "Docker Compose não disponível"
-
-      - name: Install Docker Engine (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: |
-          # Instalar Docker Engine via Homebrew
-          brew install docker docker-compose
-          # Iniciar Docker daemon (simulado para CI)
-          # Nota: Em CI, o Docker daemon real não está disponível no macOS
-          echo "Docker Engine instalado via Homebrew (simulação para CI)"
-          # Verificar instalação (comando disponível)
-          which docker
-          which docker-compose
-
-
-
-
-
-
+          name: docker-images-embedded
+          path: docker-images/
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -431,107 +94,47 @@ jobs:
           cache: 'npm'
           cache-dependency-path: Globo-Front-main/package-lock.json
 
-      - name: Prepare Windows environment
-        if: matrix.platform == 'windows-latest'
-        run: |
-          # Verificar espaço em disco (sem limpar WiX - isso causa erros)
-          Get-PSDrive -PSProvider FileSystem
-          echo "Ambiente Windows preparado para build NSIS"
-          
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install system dependencies (macOS)
-        if: matrix.platform == 'macos-latest'
         run: |
           # Verificar se os pacotes já estão instalados antes de instalar
           brew list pkg-config || brew install pkg-config
           brew list glib || brew install glib
-          # gtk+3 não é necessário para Tauri no macOS - usar gtk4 se precisar
-          # brew list gtk4 || brew install gtk4
 
-      - name: Limpeza extrema pré-build (Ubuntu)
-        if: matrix.platform == 'ubuntu-latest'
+      - name: Copy essential files to resources (macOS)
         run: |
-          # Limpeza extrema antes do build para garantir espaço suficiente
-          echo "=== LIMPEZA EXTREMA PRÉ-BUILD ==="
-          echo "Espaço antes:"
-          df -h
-          
-          # Parar serviços desnecessários
-          sudo systemctl stop mysql postgresql mongodb || true
-          sudo systemctl disable mysql postgresql mongodb || true
-          
-          # Remover mais componentes pesados
-          sudo rm -rf /opt/hostedtoolcache/* || true
-          sudo rm -rf /usr/local/lib/android/sdk || true
-          sudo rm -rf /usr/share/swift || true
-          sudo rm -rf /usr/local/.ghcup || true
-          sudo rm -rf /opt/containerd || true
-          
-          # Limpar logs e temporários com força
-          sudo find /var/log -type f -delete || true
-          sudo find /tmp -type f -delete || true
-          sudo find /var/tmp -type f -delete || true
-          
-          # Docker cleanup total
-          docker system prune -af --volumes || true
-          docker image prune -af || true
-          
-          echo "Espaço após limpeza extrema:"
-          df -h
-          echo "=== FIM DA LIMPEZA EXTREMA ==="
+          mkdir -p Globo-Front-main/src-tauri/resources
+          cp docker-compose.yml Globo-Front-main/src-tauri/resources/
+          cp .env Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
+          cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
+          cp -r docker-images Globo-Front-main/src-tauri/resources/
 
-      - name: Install system dependencies (Ubuntu)
-        if: matrix.platform == 'ubuntu-latest'
+      - name: Validate downloaded Docker images (macOS)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          echo "Validando arquivos de imagens Docker baixados:"
+          ls -la Globo-Front-main/src-tauri/resources/docker-images/
+          for file in Globo-Front-main/src-tauri/resources/docker-images/*.tar; do
+            if [ -f "$file" ]; then
+              size=$(stat -f%z "$file" 2>/dev/null || echo "0")
+              echo "$(basename "$file"): $size bytes"
+              if [ "$size" -lt 1000 ]; then
+                echo "⚠️  Arquivo pequeno detectado: $file"
+              fi
+            fi
+          done
 
-      - name: Ensure all resource files exist (Windows)
-        if: matrix.platform == 'windows-latest'
-        working-directory: Globo-Front-main/src-tauri
-        run: |
-          # Criar arquivos placeholder apenas se não existirem (preservar arquivos baixados)
-          if (!(Test-Path "resources/docker-images/postgres.tar")) {
-            Write-Host "Criando placeholder postgres.tar"
-            New-Item -ItemType File -Path "resources/docker-images/postgres.tar" -Force
-          } else {
-            $size = (Get-Item "resources/docker-images/postgres.tar").Length
-            Write-Host "postgres.tar já existe (tamanho: $size bytes)"
-            if ($size -eq 0) {
-              Write-Host "ARQUIVO VAZIO - criando placeholder substituto"
-              Remove-Item "resources/docker-images/postgres.tar" -Force
-              New-Item -ItemType File -Path "resources/docker-images/postgres.tar" -Force
-            }
-          }
-          if (!(Test-Path "resources/docker-images/backend.tar")) {
-            Write-Host "Criando placeholder backend.tar"
-            New-Item -ItemType File -Path "resources/docker-images/backend.tar" -Force
-          } else {
-            $size = (Get-Item "resources/docker-images/backend.tar").Length
-            Write-Host "backend.tar já existe (tamanho: $size bytes)"
-            if ($size -eq 0) {
-              Write-Host "ARQUIVO VAZIO - criando placeholder substituto"
-              Remove-Item "resources/docker-images/backend.tar" -Force
-              New-Item -ItemType File -Path "resources/docker-images/backend.tar" -Force
-            }
-          }
-          if (!(Test-Path "resources/docker-images/ia-service.tar")) {
-            Write-Host "Criando placeholder ia-service.tar"
-            New-Item -ItemType File -Path "resources/docker-images/ia-service.tar" -Force
-          } else {
-            $size = (Get-Item "resources/docker-images/ia-service.tar").Length
-            Write-Host "ia-service.tar já existe (tamanho: $size bytes)"
-            if ($size -eq 0) {
-              Write-Host "ARQUIVO VAZIO - criando placeholder substituto"
-              Remove-Item "resources/docker-images/ia-service.tar" -Force
-              New-Item -ItemType File -Path "resources/docker-images/ia-service.tar" -Force
-            }
-          }
+      - name: Install frontend dependencies
+        working-directory: Globo-Front-main
+        run: npm install --legacy-peer-deps
 
-      - name: Ensure all resource files exist (Unix)
-        if: matrix.platform != 'windows-latest'
+      - name: Build Frontend
+        working-directory: Globo-Front-main
+        run: npm run build
+
+      - name: Ensure all resource files exist (macOS)
         working-directory: Globo-Front-main/src-tauri
         run: |
           # Criar arquivos placeholder apenas se não existirem (preservar arquivos baixados)
@@ -540,7 +143,7 @@ jobs:
             echo "Criando placeholder postgres.tar"
             touch resources/docker-images/postgres.tar
           else
-            size=$(stat -c%s "resources/docker-images/postgres.tar" 2>/dev/null || stat -f%z "resources/docker-images/postgres.tar" 2>/dev/null || echo "0")
+            size=$(stat -f%z "resources/docker-images/postgres.tar" 2>/dev/null || echo "0")
             echo "postgres.tar já existe (tamanho: $size bytes)"
             if [ "$size" -eq 0 ]; then
               echo "ARQUIVO VAZIO - criando placeholder substituto"
@@ -552,7 +155,7 @@ jobs:
             echo "Criando placeholder backend.tar"
             touch resources/docker-images/backend.tar
           else
-            size=$(stat -c%s "resources/docker-images/backend.tar" 2>/dev/null || stat -f%z "resources/docker-images/backend.tar" 2>/dev/null || echo "0")
+            size=$(stat -f%z "resources/docker-images/backend.tar" 2>/dev/null || echo "0")
             echo "backend.tar já existe (tamanho: $size bytes)"
             if [ "$size" -eq 0 ]; then
               echo "ARQUIVO VAZIO - criando placeholder substituto"
@@ -564,7 +167,7 @@ jobs:
             echo "Criando placeholder ia-service.tar"
             touch resources/docker-images/ia-service.tar
           else
-            size=$(stat -c%s "resources/docker-images/ia-service.tar" 2>/dev/null || stat -f%z "resources/docker-images/ia-service.tar" 2>/dev/null || echo "0")
+            size=$(stat -f%z "resources/docker-images/ia-service.tar" 2>/dev/null || echo "0")
             echo "ia-service.tar já existe (tamanho: $size bytes)"
             if [ "$size" -eq 0 ]; then
               echo "ARQUIVO VAZIO - criando placeholder substituto"
@@ -573,50 +176,7 @@ jobs:
             fi
           fi
 
-      - name: Install frontend dependencies
-        working-directory: Globo-Front-main
-        run: npm install --legacy-peer-deps
-
-      - name: Build Frontend
-        working-directory: Globo-Front-main
-        run: npm run build
-
-      - name: Copy resources to Tauri directory (if not exists)
-        if: matrix.platform == 'ubuntu-latest' || matrix.platform == 'macos-latest'
-        run: |
-          # Copy docker-compose.yml and other resources to the correct location only if not exists
-          if [ ! -f "Globo-Front-main/src-tauri/resources/docker-compose.yml" ]; then
-            cp docker-compose.yml Globo-Front-main/src-tauri/resources/
-          fi
-          if [ ! -f "Globo-Front-main/src-tauri/resources/.env" ]; then
-            cp .env Globo-Front-main/src-tauri/resources/
-          fi
-          if [ ! -d "Globo-Front-main/src-tauri/resources/residencia4-backend-master" ]; then
-            cp -r residencia4-backend-master Globo-Front-main/src-tauri/resources/
-          fi
-          if [ ! -d "Globo-Front-main/src-tauri/resources/residencia4-ia-main" ]; then
-            cp -r residencia4-ia-main Globo-Front-main/src-tauri/resources/
-          fi
-
-      - name: Copy resources to Tauri directory (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          # Copy docker-compose.yml and other resources to the correct location only if not exists
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/docker-compose.yml")) {
-            Copy-Item "docker-compose.yml" -Destination "Globo-Front-main/src-tauri/resources/"
-          }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/.env")) {
-            Copy-Item ".env" -Destination "Globo-Front-main/src-tauri/resources/"
-          }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/residencia4-backend-master")) {
-            Copy-Item "residencia4-backend-master" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
-          }
-          if (!(Test-Path "Globo-Front-main/src-tauri/resources/residencia4-ia-main")) {
-            Copy-Item "residencia4-ia-main" -Destination "Globo-Front-main/src-tauri/resources/" -Recurse
-          }
-          
-      - name: Ensure scripts exist (Unix)
-        if: matrix.platform != 'windows-latest'
+      - name: Ensure scripts exist (macOS)
         working-directory: Globo-Front-main/src-tauri
         run: |
           # Garantir que os scripts existam antes do build
@@ -629,16 +189,6 @@ jobs:
             echo '# Docker setup script for Unix' >> scripts/setup-docker.sh
             chmod +x scripts/setup-docker.sh
           fi
-          
-      - name: Ensure scripts exist (Windows)
-        if: matrix.platform == 'windows-latest'
-        working-directory: Globo-Front-main/src-tauri
-        run: |
-          # Garantir que os scripts existam antes do build
-          New-Item -ItemType Directory -Force -Path "scripts"
-          if (!(Test-Path "scripts/setup-docker.ps1")) {
-            '# Docker setup script for Windows' | Out-File -FilePath "scripts/setup-docker.ps1" -Encoding UTF8
-          }
 
       - name: Build Tauri app with embedded Docker (macOS)
         if: matrix.platform == 'macos-latest'
@@ -649,37 +199,10 @@ jobs:
           projectPath: Globo-Front-main/src-tauri
           tagName: ${{ github.ref_name }}-docker-embedded
           releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
-          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
+          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador (macOS).'
           releaseDraft: true
           prerelease: false
           args: --config tauri-macos.conf.json
-
-      - name: Build Tauri app with embedded Docker (Linux)
-        if: matrix.platform == 'ubuntu-latest'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: Globo-Front-main/src-tauri
-          tagName: ${{ github.ref_name }}-docker-embedded
-          releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
-          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador.'
-          releaseDraft: true
-          prerelease: false
-
-      - name: Build Tauri app with embedded Docker (Windows - NSIS apenas)
-        if: matrix.platform == 'windows-latest'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: Globo-Front-main/src-tauri
-          tagName: ${{ github.ref_name }}-docker-embedded
-          releaseName: 'Globo Monitor Docker Embedded v__VERSION__'
-          releaseBody: 'Versão com Docker Desktop e imagens pré-carregadas incluídas no instalador (NSIS).'
-          releaseDraft: true
-          prerelease: false
-          args: --bundles nsis  # NSIS apenas - WiX removido devido a erros com arquivos grandes
 
       - name: Upload embedded artifacts
         if: startsWith(github.ref, 'refs/tags/') == false
@@ -687,79 +210,61 @@ jobs:
         with:
           name: globo-monitor-docker-embedded-${{ matrix.platform }}
           path: |
-            Globo-Front-main/src-tauri/target/release/bundle/msi/*.msi
-            Globo-Front-main/src-tauri/target/release/bundle/nsis/*.exe
             Globo-Front-main/src-tauri/target/release/bundle/dmg/*.dmg
-            Globo-Front-main/src-tauri/target/release/bundle/deb/*.deb
-            Globo-Front-main/src-tauri/target/release/bundle/appimage/*.AppImage
           if-no-files-found: ignore
           compression-level: 6
           retention-days: 30
 
   create-release:
-    needs: build-tauri-embedded
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')
+    needs: build-tauri
+    if: startsWith(github.ref, 'refs/tags/')
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
-
-      - name: Display structure of downloaded files
-        run: ls -R artifacts
+          pattern: globo-monitor-docker-embedded-*
+          path: artifacts/
+          merge-multiple: true
 
       - name: Create Release
-        if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.run_number }}-docker-embedded
-          name: 🎬 Globo Monitor v${{ github.run_number }} - Docker Embarcado
+          tag_name: ${{ github.ref_name }}-docker-embedded
+          name: 'Globo Monitor Docker Embedded v${{ github.ref_name }}'
           body: |
-            # 🎬 Globo Monitor v${{ github.run_number }}
+            ## 🍎 Versão macOS com Docker Embedded
             
-            Sistema completo de monitoramento de qualidade de vídeo com Inteligência Artificial.
+            Esta versão inclui:
+            - ✨ Frontend Angular integrado
+            - 🐳 Imagens Docker pré-carregadas (PostgreSQL, Backend, IA Service)
+            - 📋 Docker Compose configurado
+            - 🚀 Instalação completa com um clique
             
-            ## ✨ Novidades
-            - 📦 **Docker Embarcado**: Todos os serviços incluídos no instalador
-            - 🚀 **Instalação Automática**: Docker Desktop e imagens pré-carregadas
-            - 🖥️ **Multi-plataforma**: Windows, macOS e Linux
+            ### 📦 Arquivos Incluídos:
+            - `Globo Monitor_[versão]_universal.dmg` - Instalador macOS universal
             
-            ## 📋 Requisitos
-            - Windows 10/11, macOS 10.15+, ou Linux moderno
-            - 4GB RAM mínimo
-            - 2GB espaço em disco
+            ### 🎯 Como Usar:
+            1. Baixe o arquivo `.dmg`
+            2. Instale o aplicativo
+            3. Execute o Globo Monitor
+            4. O Docker será configurado automaticamente
             
-            ## 🔧 Instalação
-            1. Baixe o instalador para seu sistema operacional
-            2. Execute o instalador
-            3. O aplicativo iniciará automaticamente com todos os serviços
-            
-            ## 🎯 Funcionalidades
-            - Monitoramento em tempo real
-            - Detecção de falhas de áudio/vídeo
-            - Análise de inteligibilidade
-            - Detecção de lip-sync
-            - Dashboard interativo
-            - Notificações automáticas
-            
-            ## 🐳 Tecnologias Incluídas
-            - PostgreSQL 15
-            - FastAPI Backend
-            - IA com PyTorch/TensorFlow
-            - Angular 20 + Tauri 2
-            - Docker Compose
+            ### 🐧 Windows e Linux:
+            Para Windows e Linux, use os builds locais com os scripts de preparação:
+            - Windows: `prepara-bundle-windows.ps1`
+            - Linux: `prepara-bundle-linux.sh`
             
             ---
-            **Instaladores pré-configurados com todos os serviços Docker**
+            **Nota**: Esta é uma versão com Docker embedded. Para versões sem Docker, use o workflow padrão.
+          draft: true
+          prerelease: false
           files: |
             artifacts/**/*
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            docker-images/*.tar

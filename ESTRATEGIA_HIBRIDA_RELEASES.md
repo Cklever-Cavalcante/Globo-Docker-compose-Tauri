@@ -239,4 +239,12 @@ docker-compose up -d
 **7. "Por que Linux foi removido do GitHub Actions?"**
 🚨 **Problemas de espaço em disco**: Múltiplas limpezas agressivas e recursos pesados excedem limites. **Solução**: Build local obrigatório para Linux.
 
+**8. "Por que NSIS falha com arquivos Docker grandes?"**
+🚨 **Erro de criação de mmap**: NSIS não consegue processar stubs de 1KB para arquivos .tar grandes. **Solução**: Implementar stubs .tar válidos com:
+   - ✅ Criação de arquivos .tar reais com conteúdo dummy
+   - ✅ Múltiplos fallbacks: tar nativo → Compress-Archive → header básico
+   - ✅ Arquivos README.txt dummy para validade estrutural
+   - ✅ Verificação de integridade com Get-Item e tamanhos
+   - ✅ Remoção de stubs problemáticos antes de criar novos válidos
+
 **A estratégia híbrida é perfeita para o seu caso!** 🎯
